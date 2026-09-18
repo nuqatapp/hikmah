@@ -28,9 +28,9 @@ A complete bilingual wisdom-game platform with a fresh database. The source is i
 
 ## Standard Next.js runtime and Netlify
 
-The interface and its server API now use standard Next.js App Router on Node.js. The default commands are `pnpm dev`, `pnpm build`, and `pnpm start`. Cloudflare Workers, Vinext, Wrangler and their build wrappers are no longer required. `netlify.toml` builds with `pnpm run build` and publishes `.next`. Netlify automatically applies its Next.js adapter, including server route handlers. This is a server-rendered application, not a static export or drag-and-drop HTML deployment.
+The interface and its server API now use standard Next.js App Router on Node.js. The default commands are `pnpm dev`, `pnpm build`, and `pnpm start`. Cloudflare Workers, Vinext, Wrangler and their build wrappers are no longer required. `netlify.toml` builds with `pnpm run build` and publishes `.next`. The Netlify configuration explicitly enables its Next.js adapter for source upload deployments, including server route handlers. This is a server-rendered application, not a static export or drag-and-drop HTML deployment.
 
-The existing published ChatGPT Site remains on its previous working deployment. This conversion has not been deployed to Netlify. The historical `.openai/hosting.json` identifies the original Site only; it is not used by the standard Next.js build.
+The existing published ChatGPT Site remains on its previous working deployment. The converted frontend is deployed at https://hikmah-wisdom-games.netlify.app. As of 2026-09-18, pages and the email login form load, but the game API returns 503 while backend credential configuration remains unresolved. Email delivery, Google provider configuration and owner-account linking also remain pending. The historical `.openai/hosting.json` identifies the original Site only; it is not used by the standard Next.js build.
 
 All game data stays in Supabase project `vilgghdzyqdsvbaazphh`, in the private `hikmah` schema. Avatars stay in the private `hikmah-avatars` bucket. The `hikmah-api` Edge Function runs the game rules beside Postgres. This build conversion changes no game rules or database data.
 
@@ -40,7 +40,7 @@ Email/password signup, email confirmation, sign-in, password recovery, Google OA
 
 New accounts use stable Supabase UUID mappings. Existing profiles and HR history are preserved. A legacy profile can be explicitly linked through `profiles.auth_user_id` after ownership verification; accounts are never merged by name. The existing administrator remains assigned. New signups cannot become administrators automatically.
 
-Netlify project: `hikmah-wisdom-games`, ID `bfba38b2-602d-4890-8048-d6c6a0e4f7ea`. GitHub repository: `nuqatapp/hikmah`. The existing Nuqat website is separate. See `DEPLOYMENT.md` for remaining setup.
+Netlify project: `hikmah-wisdom-games`, ID `bfba38b2-602d-4890-8048-d6c6a0e4f7ea`. The application source is published to the public GitHub repository `nuqatapp/hikmah` with the owner's approval. Automatic Git-based deployment is not connected yet. The existing Nuqat website is separate. See `DEPLOYMENT.md` for remaining setup.
 
 ### Netlify configuration
 
@@ -54,6 +54,8 @@ Build command: `pnpm run build`. Publish directory: `.next`. Node.js: 22. Use th
 | `HIKMAH_BACKEND_TOKEN` | Functions, secret | Private server credential |
 
 The backend URL is `https://vilgghdzyqdsvbaazphh.supabase.co/functions/v1/hikmah-api`. Never commit the token. Netlify uses a separate credential from Sites. Database transactions remain serializable.
+
+The table lists the intended minimum scopes. Netlify Free uses all scopes for the public values; granular secret scoping requires a supported plan. The owner approved default production scope, but automatic approval review separately rejected an unmarked environment variable because it would lack secret masking. The backend responds successfully when called directly; its Netlify connection remains unresolved. See `DEPLOYMENT.md` for the current status.
 
 Configure Supabase Auth Site URL for the production origin and allow `/auth/callback`, including its password recovery query string. Keep email confirmation enabled. Configure custom SMTP before accepting public email signups; Supabase's default mail service restricts recipients. Google requires its OAuth Client ID and Client Secret in Supabase. Google's callback remains `https://vilgghdzyqdsvbaazphh.supabase.co/auth/v1/callback` when frontend hosting changes.
 
