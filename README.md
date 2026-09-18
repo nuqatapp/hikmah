@@ -55,7 +55,7 @@ Build command: `pnpm run build`. Publish directory: `.next`. Node.js: 22. Use th
 
 The backend URL is `https://vilgghdzyqdsvbaazphh.supabase.co/functions/v1/hikmah-api`. Never commit the token. Netlify uses a separate credential from Sites. Database transactions remain serializable.
 
-The table lists the intended minimum scopes. Netlify Free uses all scopes for the public values; granular secret scoping requires a supported plan. The owner approved default production scope, but automatic approval review separately rejected an unmarked environment variable because it would lack secret masking. The backend responds successfully when called directly; its Netlify connection remains unresolved. See `DEPLOYMENT.md` for the current status.
+The table lists the intended minimum scopes. Netlify Free uses all scopes for the public values; granular secret scoping requires a supported plan. The owner requires the backend credential to remain marked as a secret, with production-only access and the narrowest supported server scope. Unmarked environment variables are not an acceptable workaround. The backend responds successfully when called directly; its Netlify connection remains unresolved. See `DEPLOYMENT.md` for the current status.
 
 Configure Supabase Auth Site URL for the production origin and allow `/auth/callback`, including its password recovery query string. Keep email confirmation enabled. Configure custom SMTP before accepting public email signups; Supabase's default mail service restricts recipients. Google requires its OAuth Client ID and Client Secret in Supabase. Google's callback remains `https://vilgghdzyqdsvbaazphh.supabase.co/auth/v1/callback` when frontend hosting changes.
 
