@@ -1,0 +1,1318 @@
+[
+  {
+    "id": "mcq-0",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What does the proverb \"A bird in the hand is worth two in the bush\" mean?",
+    "choices": [
+      "It is better to have something certain than risk it for more",
+      "Birds are valuable",
+      "You should catch birds",
+      "Hunting is difficult"
+    ],
+    "answer": "0",
+    "explanation": "This proverb teaches the value of certainty over speculation.",
+    "clues": []
+  },
+  {
+    "id": "mcq-1",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What is the meaning of \"Actions speak louder than words\"?",
+    "choices": [
+      "What you do matters more than what you say",
+      "Speaking is less important",
+      "Actions are noisy",
+      "Words are quiet"
+    ],
+    "answer": "0",
+    "explanation": "This proverb emphasizes the importance of deeds over promises.",
+    "clues": []
+  },
+  {
+    "id": "mcq-2",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What does \"The early bird catches the worm\" teach us?",
+    "choices": [
+      "Those who act quickly get advantages",
+      "Birds eat worms",
+      "Waking up early is healthy",
+      "Worms come out early"
+    ],
+    "answer": "0",
+    "explanation": "This proverb encourages promptness and initiative.",
+    "clues": []
+  },
+  {
+    "id": "mcq-3",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What is the lesson of \"Do not count your chickens before they hatch\"?",
+    "choices": [
+      "Do not plan based on uncertain outcomes",
+      "Chickens need counting",
+      "Eggs are fragile",
+      "Farming is difficult"
+    ],
+    "answer": "0",
+    "explanation": "This warns against premature assumptions.",
+    "clues": []
+  },
+  {
+    "id": "mcq-4",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What does \"When in Rome, do as the Romans do\" suggest?",
+    "choices": [
+      "Adapt to local customs",
+      "Rome is beautiful",
+      "Romans are wise",
+      "Travel is educational"
+    ],
+    "answer": "0",
+    "explanation": "This proverb advises adapting to local practices.",
+    "clues": []
+  },
+  {
+    "id": "mcq-5",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What is the meaning of \"A journey of a thousand miles begins with a single step\"?",
+    "choices": [
+      "Great achievements start with small actions",
+      "Walking is good exercise",
+      "Long journeys are tiring",
+      "Steps should be counted"
+    ],
+    "answer": "0",
+    "explanation": "This encourages taking initiative despite daunting tasks.",
+    "clues": []
+  },
+  {
+    "id": "mcq-6",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What does \"The pen is mightier than the sword\" mean?",
+    "choices": [
+      "Writing and ideas are more powerful than violence",
+      "Pens are weapons",
+      "Swords are outdated",
+      "Writers are warriors"
+    ],
+    "answer": "0",
+    "explanation": "This emphasizes the power of communication over force.",
+    "clues": []
+  },
+  {
+    "id": "mcq-7",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What is the lesson of \"Honesty is the best policy\"?",
+    "choices": [
+      "Being truthful is the wisest approach",
+      "Policies must be honest",
+      "Honesty is a rule",
+      "Lying is a policy"
+    ],
+    "answer": "0",
+    "explanation": "This proverb advocates for truthfulness in all dealings.",
+    "clues": []
+  },
+  {
+    "id": "mcq-8",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What does \"Time heals all wounds\" suggest?",
+    "choices": [
+      "Emotional pain lessens over time",
+      "Time is a doctor",
+      "Wounds need time",
+      "Healing takes patience"
+    ],
+    "answer": "0",
+    "explanation": "This offers comfort that pain will diminish with time.",
+    "clues": []
+  },
+  {
+    "id": "mcq-9",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What is the meaning of \"Knowledge is power\"?",
+    "choices": [
+      "Education and learning give you advantages",
+      "Power comes from books",
+      "Knowledge is physical",
+      "Powerful people are smart"
+    ],
+    "answer": "0",
+    "explanation": "This emphasizes the value of education and learning.",
+    "clues": []
+  },
+  {
+    "id": "mcq-10",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What does \"Practice makes perfect\" teach?",
+    "choices": [
+      "Repeated effort leads to mastery",
+      "Perfection is possible",
+      "Practice is easy",
+      "Perfect things need no practice"
+    ],
+    "answer": "0",
+    "explanation": "This encourages persistent effort for improvement.",
+    "clues": []
+  },
+  {
+    "id": "mcq-11",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What is the lesson of \"Where there is a will, there is a way\"?",
+    "choices": [
+      "Determination helps overcome obstacles",
+      "Wills are legal documents",
+      "Ways are paths",
+      "Obstacles are permanent"
+    ],
+    "answer": "0",
+    "explanation": "This emphasizes the power of determination.",
+    "clues": []
+  },
+  {
+    "id": "mcq-12",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What does \"Two heads are better than one\" suggest?",
+    "choices": [
+      "Collaboration improves problem-solving",
+      "People need two heads",
+      "One head is insufficient",
+      "Heads should be counted"
+    ],
+    "answer": "0",
+    "explanation": "This proverb values teamwork and collaboration.",
+    "clues": []
+  },
+  {
+    "id": "mcq-13",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What is the meaning of \"Better late than never\"?",
+    "choices": [
+      "Doing something delayed is better than not at all",
+      "Lateness is acceptable",
+      "Never is worse",
+      "Time is flexible"
+    ],
+    "answer": "0",
+    "explanation": "This encourages completing tasks even if delayed.",
+    "clues": []
+  },
+  {
+    "id": "mcq-14",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What does \"Every cloud has a silver lining\" mean?",
+    "choices": [
+      "There is something positive in every difficulty",
+      "Clouds are silver",
+      "Weather affects mood",
+      "Silver is valuable"
+    ],
+    "answer": "0",
+    "explanation": "This offers optimism during difficult times.",
+    "clues": []
+  },
+  {
+    "id": "mcq-15",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What is the lesson of \"You reap what you sow\"?",
+    "choices": [
+      "Your actions have consequences",
+      "Farming requires planning",
+      "Seeds grow into plants",
+      "Reaping is harvesting"
+    ],
+    "answer": "0",
+    "explanation": "This teaches that our actions determine our outcomes.",
+    "clues": []
+  },
+  {
+    "id": "mcq-16",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What does \"Patience is a virtue\" teach us?",
+    "choices": [
+      "Being patient is a valuable quality",
+      "Virtues are patient",
+      "Waiting is good",
+      "Time moves slowly"
+    ],
+    "answer": "0",
+    "explanation": "This proverb values the ability to wait calmly.",
+    "clues": []
+  },
+  {
+    "id": "mcq-17",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What is the meaning of \"Look before you leap\"?",
+    "choices": [
+      "Think carefully before acting",
+      "Leaping requires looking",
+      "Eyes help jumping",
+      "Actions need vision"
+    ],
+    "answer": "0",
+    "explanation": "This advises caution and forethought before action.",
+    "clues": []
+  },
+  {
+    "id": "mcq-18",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What does \"Fortune favors the bold\" suggest?",
+    "choices": [
+      "Taking risks can lead to success",
+      "Bold people are lucky",
+      "Fortune is random",
+      "Timidity is safe"
+    ],
+    "answer": "0",
+    "explanation": "This encourages courage and taking calculated risks.",
+    "clues": []
+  },
+  {
+    "id": "mcq-19",
+    "kind": "mcq",
+    "locale": "en",
+    "prompt": "What is the lesson of \"Do not judge a book by its cover\"?",
+    "choices": [
+      "Appearances can be deceiving",
+      "Books need covers",
+      "Covers are important",
+      "Judging is necessary"
+    ],
+    "answer": "0",
+    "explanation": "This teaches us not to make assumptions based on appearances.",
+    "clues": []
+  },
+  {
+    "id": "mcq-20",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما معنى المثل \"العلم نور\"؟",
+    "choices": [
+      "المعرفة تضيء الطريق وترشد الإنسان",
+      "النور يأتي من الكتب",
+      "العلماء يحملون مصابيح",
+      "القراءة تحسن البصر"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل يؤكد على أهمية العلم في حياة الإنسان.",
+    "clues": []
+  },
+  {
+    "id": "mcq-21",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما الدرس المستفاد من \"من جد وجد\"؟",
+    "choices": [
+      "الاجتهاد يؤدي إلى النجاح",
+      "الجد شخص مهم",
+      "الوجود يتطلب جهداً",
+      "الجهد سهل"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل يحث على العمل الجاد والمثابرة.",
+    "clues": []
+  },
+  {
+    "id": "mcq-22",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما معنى \"الصبر مفتاح الفرج\"؟",
+    "choices": [
+      "التحلي بالصبر يؤدي إلى حل المشاكل",
+      "المفاتيح تفتح الأبواب",
+      "الفرج يحتاج مفتاحاً",
+      "الصبر صعب"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل يشجع على الصبر عند الشدائد.",
+    "clues": []
+  },
+  {
+    "id": "mcq-23",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما الحكمة من \"في التأني السلامة\"؟",
+    "choices": [
+      "التمهل يجنبك الأخطاء",
+      "السلامة تحتاج وقتاً",
+      "العجلة جيدة",
+      "التأني بطيء"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل ينصح بالتروي قبل اتخاذ القرارات.",
+    "clues": []
+  },
+  {
+    "id": "mcq-24",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما معنى \"اليد الواحدة لا تصفق\"؟",
+    "choices": [
+      "التعاون ضروري للنجاح",
+      "التصفيق يحتاج يدين",
+      "اليد الواحدة ضعيفة",
+      "الأصوات تحتاج أيادي"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل يؤكد على أهمية العمل الجماعي.",
+    "clues": []
+  },
+  {
+    "id": "mcq-25",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما الدرس من \"درهم وقاية خير من قنطار علاج\"؟",
+    "choices": [
+      "الوقاية أفضل من العلاج",
+      "الدراهم مهمة",
+      "العلاج مكلف",
+      "القناطير ثقيلة"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل يحث على الحذر والاحتياط.",
+    "clues": []
+  },
+  {
+    "id": "mcq-26",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما معنى \"الصديق وقت الضيق\"؟",
+    "choices": [
+      "الصديق الحقيقي يظهر عند الحاجة",
+      "الضيق يحتاج أصدقاء",
+      "الأوقات صعبة",
+      "الصداقة سهلة"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل يبين قيمة الصداقة الحقيقية.",
+    "clues": []
+  },
+  {
+    "id": "mcq-27",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما الحكمة من \"قل خيراً أو اصمت\"؟",
+    "choices": [
+      "إذا لم يكن كلامك مفيداً فالصمت أفضل",
+      "الصمت ذهب",
+      "الكلام صعب",
+      "الخير في الكلام"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل ينصح بالتفكير قبل الكلام.",
+    "clues": []
+  },
+  {
+    "id": "mcq-28",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما معنى \"من طلب العلا سهر الليالي\"؟",
+    "choices": [
+      "تحقيق الأهداف يتطلب جهداً وتضحية",
+      "الليل للنوم فقط",
+      "العلا بعيد",
+      "السهر صحي"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل يحث على الاجتهاد لتحقيق الطموحات.",
+    "clues": []
+  },
+  {
+    "id": "mcq-29",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما الدرس من \"لا تؤجل عمل اليوم إلى الغد\"؟",
+    "choices": [
+      "إنجاز المهام فوراً أفضل من تأخيرها",
+      "الغد غير مضمون",
+      "اليوم مزدحم",
+      "التأجيل مريح"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل يحث على عدم المماطلة.",
+    "clues": []
+  },
+  {
+    "id": "mcq-30",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما معنى \"رب أخ لك لم تلده أمك\"؟",
+    "choices": [
+      "الصداقة الحقيقية تعادل الأخوة",
+      "الأخوة من الأم فقط",
+      "الأصدقاء كثيرون",
+      "الولادة تحدد العلاقات"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل يرفع من قيمة الصداقة.",
+    "clues": []
+  },
+  {
+    "id": "mcq-31",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما الحكمة من \"إذا هبت رياحك فاغتنمها\"؟",
+    "choices": [
+      "اغتنم الفرص عندما تأتي",
+      "الرياح قوية",
+      "الفرص نادرة",
+      "الاغتنام صعب"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل يحث على استغلال الفرص.",
+    "clues": []
+  },
+  {
+    "id": "mcq-32",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما معنى \"العقل السليم في الجسم السليم\"؟",
+    "choices": [
+      "صحة الجسد ترتبط بصحة العقل",
+      "العقل يحتاج جسماً",
+      "الجسم يحتاج عقلاً",
+      "السلامة مهمة"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل يؤكد على الترابط بين الصحة الجسدية والعقلية.",
+    "clues": []
+  },
+  {
+    "id": "mcq-33",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما الدرس من \"خير الكلام ما قل ودل\"؟",
+    "choices": [
+      "الإيجاز في الكلام مع الوضوح أفضل",
+      "الكلام الكثير جيد",
+      "الدلالة تحتاج كلاماً",
+      "القلة ضعف"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل يحث على الاختصار والوضوح.",
+    "clues": []
+  },
+  {
+    "id": "mcq-34",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما معنى \"الحاجة أم الاختراع\"؟",
+    "choices": [
+      "الضرورة تدفع الإنسان للإبداع",
+      "الأمهات تخترع",
+      "الاختراعات ضرورية",
+      "الحاجات كثيرة"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل يبين كيف أن الحاجة تولد الحلول.",
+    "clues": []
+  },
+  {
+    "id": "mcq-35",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما الحكمة من \"من شب على شيء شاب عليه\"؟",
+    "choices": [
+      "العادات المكتسبة في الصغر تستمر",
+      "الشيب يأتي مبكراً",
+      "الشباب سريع",
+      "العادات سهلة"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل يؤكد على أهمية التربية المبكرة.",
+    "clues": []
+  },
+  {
+    "id": "mcq-36",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما معنى \"ما حك جلدك مثل ظفرك\"؟",
+    "choices": [
+      "أنت أقدر على حل مشاكلك بنفسك",
+      "الجلد يحتاج عناية",
+      "الأظافر مفيدة",
+      "الحكة مزعجة"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل يحث على الاعتماد على النفس.",
+    "clues": []
+  },
+  {
+    "id": "mcq-37",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما الدرس من \"التكرار يعلم الشطار\"؟",
+    "choices": [
+      "الممارسة المتكررة تؤدي للإتقان",
+      "الشطار أذكياء",
+      "التكرار ممل",
+      "التعلم سهل"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل يؤكد على أهمية التدريب والممارسة.",
+    "clues": []
+  },
+  {
+    "id": "mcq-38",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما معنى \"اتق شر من أحسنت إليه\"؟",
+    "choices": [
+      "احذر ممن تفضلت عليه فقد يسيء إليك",
+      "الإحسان خطير",
+      "الشر موجود",
+      "الحذر واجب"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل يحذر من جحود بعض الناس.",
+    "clues": []
+  },
+  {
+    "id": "mcq-39",
+    "kind": "mcq",
+    "locale": "ar",
+    "prompt": "ما الحكمة من \"الوقت كالسيف إن لم تقطعه قطعك\"؟",
+    "choices": [
+      "إدارة الوقت ضرورية وإلا ضاع",
+      "السيوف حادة",
+      "الوقت سريع",
+      "القطع صعب"
+    ],
+    "answer": "0",
+    "explanation": "هذا المثل يحث على حسن إدارة الوقت.",
+    "clues": []
+  },
+  {
+    "id": "letters-0",
+    "kind": "letters",
+    "locale": "en",
+    "prompt": "A journey of a thousand miles begins with a single step.",
+    "answer": "single",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "letters-1",
+    "kind": "letters",
+    "locale": "en",
+    "prompt": "Better late than never.",
+    "answer": "never",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "letters-2",
+    "kind": "letters",
+    "locale": "en",
+    "prompt": "Actions speak louder than words.",
+    "answer": "Actions",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "letters-3",
+    "kind": "letters",
+    "locale": "en",
+    "prompt": "Every cloud has a silver lining.",
+    "answer": "silver",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "letters-4",
+    "kind": "letters",
+    "locale": "en",
+    "prompt": "Don't count your chickens before they hatch.",
+    "answer": "chickens",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "letters-5",
+    "kind": "letters",
+    "locale": "en",
+    "prompt": "Practice makes perfect.",
+    "answer": "perfect",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "letters-6",
+    "kind": "letters",
+    "locale": "ar",
+    "prompt": "الصبر مفتاح الفرج",
+    "answer": "الفرج",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "letters-7",
+    "kind": "letters",
+    "locale": "ar",
+    "prompt": "يد واحدة لا تصفق",
+    "answer": "تصفق",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "letters-8",
+    "kind": "letters",
+    "locale": "ar",
+    "prompt": "من جد وجد ومن زرع حصد",
+    "answer": "حصد",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "letters-9",
+    "kind": "letters",
+    "locale": "ar",
+    "prompt": "الوقت كالسيف إن لم تقطعه قطعك",
+    "answer": "السيف",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "letters-10",
+    "kind": "letters",
+    "locale": "ar",
+    "prompt": "درهم وقاية خير من قنطار علاج",
+    "answer": "وقاية",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "letters-11",
+    "kind": "letters",
+    "locale": "ar",
+    "prompt": "على قدر أهل العزم تأتي العزائم",
+    "answer": "العزم",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "cryptogram-0",
+    "kind": "cryptogram",
+    "locale": "en",
+    "prompt": "THINK CLEARLY AND ACT BRAVELY",
+    "answer": "THINK CLEARLY AND ACT BRAVELY",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "THINK",
+        "hint": "Use your mind"
+      },
+      {
+        "word": "CLEARLY",
+        "hint": "Without confusion"
+      },
+      {
+        "word": "AND",
+        "hint": "Connector"
+      },
+      {
+        "word": "ACT",
+        "hint": "Take action"
+      },
+      {
+        "word": "BRAVELY",
+        "hint": "With courage"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-1",
+    "kind": "cryptogram",
+    "locale": "en",
+    "prompt": "START SMALL AND DREAM BIG",
+    "answer": "START SMALL AND DREAM BIG",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "START",
+        "hint": "Begin"
+      },
+      {
+        "word": "SMALL",
+        "hint": "Not large"
+      },
+      {
+        "word": "AND",
+        "hint": "Connector"
+      },
+      {
+        "word": "DREAM",
+        "hint": "Imagine"
+      },
+      {
+        "word": "BIG",
+        "hint": "Large or ambitious"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-2",
+    "kind": "cryptogram",
+    "locale": "en",
+    "prompt": "DARE GREATLY AND SEE WHAT UNFOLDS",
+    "answer": "DARE GREATLY AND SEE WHAT UNFOLDS",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "DARE",
+        "hint": "Take a risk"
+      },
+      {
+        "word": "GREATLY",
+        "hint": "In a big way"
+      },
+      {
+        "word": "AND",
+        "hint": "Connector"
+      },
+      {
+        "word": "SEE",
+        "hint": "Observe"
+      },
+      {
+        "word": "WHAT",
+        "hint": "Question word"
+      },
+      {
+        "word": "UNFOLDS",
+        "hint": "Slowly reveals"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-3",
+    "kind": "cryptogram",
+    "locale": "en",
+    "prompt": "SILENCE IS GOLDEN",
+    "answer": "SILENCE IS GOLDEN",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "SILENCE",
+        "hint": "No sound"
+      },
+      {
+        "word": "IS",
+        "hint": "Equals"
+      },
+      {
+        "word": "GOLDEN",
+        "hint": "Precious metal color"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-4",
+    "kind": "cryptogram",
+    "locale": "en",
+    "prompt": "KNOWLEDGE IS POWER",
+    "answer": "KNOWLEDGE IS POWER",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "KNOWLEDGE",
+        "hint": "What you learn"
+      },
+      {
+        "word": "IS",
+        "hint": "Equals"
+      },
+      {
+        "word": "POWER",
+        "hint": "Strength or control"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-5",
+    "kind": "cryptogram",
+    "locale": "en",
+    "prompt": "PATIENCE IS A VIRTUE",
+    "answer": "PATIENCE IS A VIRTUE",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "PATIENCE",
+        "hint": "Waiting calmly"
+      },
+      {
+        "word": "IS",
+        "hint": "Equals"
+      },
+      {
+        "word": "A",
+        "hint": "Article"
+      },
+      {
+        "word": "VIRTUE",
+        "hint": "Good quality"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-6",
+    "kind": "cryptogram",
+    "locale": "en",
+    "prompt": "LOVE CONQUERS ALL",
+    "answer": "LOVE CONQUERS ALL",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "LOVE",
+        "hint": "Deep affection"
+      },
+      {
+        "word": "CONQUERS",
+        "hint": "Defeats or wins over"
+      },
+      {
+        "word": "ALL",
+        "hint": "Everything"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-7",
+    "kind": "cryptogram",
+    "locale": "en",
+    "prompt": "TIME HEALS ALL WOUNDS",
+    "answer": "TIME HEALS ALL WOUNDS",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "TIME",
+        "hint": "Clock measures this"
+      },
+      {
+        "word": "HEALS",
+        "hint": "Makes better"
+      },
+      {
+        "word": "ALL",
+        "hint": "Every one"
+      },
+      {
+        "word": "WOUNDS",
+        "hint": "Injuries"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-8",
+    "kind": "cryptogram",
+    "locale": "en",
+    "prompt": "FORTUNE FAVORS THE BOLD",
+    "answer": "FORTUNE FAVORS THE BOLD",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "FORTUNE",
+        "hint": "Luck or wealth"
+      },
+      {
+        "word": "FAVORS",
+        "hint": "Supports"
+      },
+      {
+        "word": "THE",
+        "hint": "Article"
+      },
+      {
+        "word": "BOLD",
+        "hint": "Courageous"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-9",
+    "kind": "cryptogram",
+    "locale": "en",
+    "prompt": "WISDOM BEGINS IN WONDER",
+    "answer": "WISDOM BEGINS IN WONDER",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "WISDOM",
+        "hint": "Deep understanding"
+      },
+      {
+        "word": "BEGINS",
+        "hint": "Starts"
+      },
+      {
+        "word": "IN",
+        "hint": "Inside"
+      },
+      {
+        "word": "WONDER",
+        "hint": "Amazement or curiosity"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-10",
+    "kind": "cryptogram",
+    "locale": "ar",
+    "prompt": "فكر بوضوح وتصرف بشجاعة",
+    "answer": "فكر بوضوح وتصرف بشجاعة",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "فكر",
+        "hint": "استخدم عقلك"
+      },
+      {
+        "word": "بوضوح",
+        "hint": "بدون غموض"
+      },
+      {
+        "word": "وتصرف",
+        "hint": "قم بالفعل"
+      },
+      {
+        "word": "بشجاعة",
+        "hint": "بدون خوف"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-11",
+    "kind": "cryptogram",
+    "locale": "ar",
+    "prompt": "ابدأ صغيرا واحلم كبيرا",
+    "answer": "ابدأ صغيرا واحلم كبيرا",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "ابدأ",
+        "hint": "أول خطوة"
+      },
+      {
+        "word": "صغيرا",
+        "hint": "غير كبير"
+      },
+      {
+        "word": "واحلم",
+        "hint": "تخيل المستقبل"
+      },
+      {
+        "word": "كبيرا",
+        "hint": "بطموح عال"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-12",
+    "kind": "cryptogram",
+    "locale": "ar",
+    "prompt": "استمع أكثر وتكلم أقل",
+    "answer": "استمع أكثر وتكلم أقل",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "استمع",
+        "hint": "انتبه لما يقال"
+      },
+      {
+        "word": "أكثر",
+        "hint": "كمية أكبر"
+      },
+      {
+        "word": "وتكلم",
+        "hint": "استخدم صوتك"
+      },
+      {
+        "word": "أقل",
+        "hint": "كمية أقل"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-13",
+    "kind": "cryptogram",
+    "locale": "ar",
+    "prompt": "العلم نور",
+    "answer": "العلم نور",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "العلم",
+        "hint": "المعرفة"
+      },
+      {
+        "word": "نور",
+        "hint": "ضوء"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-14",
+    "kind": "cryptogram",
+    "locale": "ar",
+    "prompt": "الصبر مفتاح الفرج",
+    "answer": "الصبر مفتاح الفرج",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "الصبر",
+        "hint": "التحمل"
+      },
+      {
+        "word": "مفتاح",
+        "hint": "ما يفتح"
+      },
+      {
+        "word": "الفرج",
+        "hint": "النجاة"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-15",
+    "kind": "cryptogram",
+    "locale": "ar",
+    "prompt": "من جد وجد",
+    "answer": "من جد وجد",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "من",
+        "hint": "الذي"
+      },
+      {
+        "word": "جد",
+        "hint": "اجتهد"
+      },
+      {
+        "word": "وجد",
+        "hint": "حصل"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-16",
+    "kind": "cryptogram",
+    "locale": "ar",
+    "prompt": "الوقت كالسيف",
+    "answer": "الوقت كالسيف",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "الوقت",
+        "hint": "الزمن"
+      },
+      {
+        "word": "كالسيف",
+        "hint": "أداة حادة"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-17",
+    "kind": "cryptogram",
+    "locale": "ar",
+    "prompt": "خير الكلام ما قل ودل",
+    "answer": "خير الكلام ما قل ودل",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "خير",
+        "hint": "الأفضل"
+      },
+      {
+        "word": "الكلام",
+        "hint": "الحديث"
+      },
+      {
+        "word": "ما",
+        "hint": "الذي"
+      },
+      {
+        "word": "قل",
+        "hint": "القليل"
+      },
+      {
+        "word": "ودل",
+        "hint": "أفاد"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-18",
+    "kind": "cryptogram",
+    "locale": "ar",
+    "prompt": "الصديق وقت الضيق",
+    "answer": "الصديق وقت الضيق",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "الصديق",
+        "hint": "الرفيق"
+      },
+      {
+        "word": "وقت",
+        "hint": "حين"
+      },
+      {
+        "word": "الضيق",
+        "hint": "الشدة"
+      }
+    ]
+  },
+  {
+    "id": "cryptogram-19",
+    "kind": "cryptogram",
+    "locale": "ar",
+    "prompt": "السكوت علامة الرضا",
+    "answer": "السكوت علامة الرضا",
+    "choices": [],
+    "explanation": "",
+    "clues": [
+      {
+        "word": "السكوت",
+        "hint": "الصمت"
+      },
+      {
+        "word": "علامة",
+        "hint": "دليل"
+      },
+      {
+        "word": "الرضا",
+        "hint": "القبول"
+      }
+    ]
+  },
+  {
+    "id": "letters-extra-0",
+    "kind": "letters",
+    "locale": "en",
+    "prompt": "Knowledge is power.",
+    "answer": "power",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "letters-extra-1",
+    "kind": "letters",
+    "locale": "en",
+    "prompt": "Where there is a will, there is a way.",
+    "answer": "will",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "letters-extra-2",
+    "kind": "letters",
+    "locale": "en",
+    "prompt": "Honesty is the best policy.",
+    "answer": "Honesty",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "letters-extra-3",
+    "kind": "letters",
+    "locale": "en",
+    "prompt": "Look before you leap.",
+    "answer": "leap",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "letters-extra-4",
+    "kind": "letters",
+    "locale": "ar",
+    "prompt": "العلم نور",
+    "answer": "نور",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "letters-extra-5",
+    "kind": "letters",
+    "locale": "ar",
+    "prompt": "خير الكلام ما قل ودل",
+    "answer": "الكلام",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "letters-extra-6",
+    "kind": "letters",
+    "locale": "ar",
+    "prompt": "في التأني السلامة",
+    "answer": "التأني",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  },
+  {
+    "id": "letters-extra-7",
+    "kind": "letters",
+    "locale": "ar",
+    "prompt": "من سار على الدرب وصل",
+    "answer": "الدرب",
+    "choices": [],
+    "explanation": "",
+    "clues": []
+  }
+]

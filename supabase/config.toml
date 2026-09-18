@@ -1,0 +1,8 @@
+project_id = "vilgghdzyqdsvbaazphh"
+
+[functions.hikmah-api]
+enabled = true
+# The function validates the private server credential before every action.
+verify_jwt = false
+entrypoint = "./functions/hikmah-api/index.js"
+import_map = "./functions/hikmah-api/deno.json"
