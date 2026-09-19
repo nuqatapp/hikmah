@@ -11,4 +11,6 @@ NEXT_TELEMETRY_DISABLED = "1"
 package = "@netlify/plugin-nextjs"
 
 # Configure HIKMAH_BACKEND_URL and HIKMAH_BACKEND_TOKEN in Netlify's
-# environment settings, with Functions scope. Never put secrets here.
+# environment settings. Keep the token marked secret and production-only.
+# Approved Free-plan secret scopes: builds, functions, runtime (not post_processing).
+# Never put secrets here.
