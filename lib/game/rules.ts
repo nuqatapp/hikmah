@@ -18,7 +18,16 @@ export function snapshot(c:Content):Snapshot{
 }
 export function publicPuzzle(s:Snapshot):Puzzle{
  const p:Puzzle={id:s.id,kind:s.kind,locale:s.locale,prompt:s.prompt,choices:s.choices};
- if(s.kind==='letters'){const escaped=s.answer.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');p.prompt=s.prompt.replace(new RegExp(escaped,'iu'),'_____');p.bank=s.bank;p.length=Array.from(normalize(s.answer)).length;}
+ if(s.kind==='letters'){
+  // Blank every whole-word occurrence of the answer so it never stays visible elsewhere in the proverb.
+  // Arabic answers may carry a one or two letter proclitic (و ف ب ك ل), which stays visible: بالسيف becomes ب_____.
+  // If nothing matches as a word, fall back to blanking every text match.
+  const escaped=s.answer.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const edge='[\\p{L}\\p{M}\\p{N}]';
+  const clitic=/[\u0600-\u06FF]/.test(s.answer)?'([\u0648\u0641]?[\u0628\u0643\u0644]?)':'()';
+  const whole=s.prompt.replace(new RegExp('(?<!'+edge+')'+clitic+escaped+'(?!'+edge+')','giu'),'$1_____');
+  p.prompt=whole!==s.prompt?whole:s.prompt.replace(new RegExp(escaped,'giu'),'_____');
+  p.bank=s.bank;p.length=Array.from(normalize(s.answer)).length;}
  if(s.kind==='cryptogram'){const tokens=(v:string):Token[]=>Array.from(normalize(v)).map(c=>s.codes?.[c]?{code:s.codes[c]}:{code:null,symbol:c});p.prompt='';p.tokens=tokens(s.prompt);p.clues=s.clues.map(c=>({hint:c.hint,tokens:tokens(c.word)}));}
  return p;
 }
