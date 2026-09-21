@@ -1512,7 +1512,10 @@ function publicPuzzle(s) {
   const p = { id: s.id, kind: s.kind, locale: s.locale, prompt: s.prompt, choices: s.choices };
   if (s.kind === "letters") {
     const escaped = s.answer.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    p.prompt = s.prompt.replace(new RegExp(escaped, "iu"), "_____");
+    const edge = "[\\p{L}\\p{M}\\p{N}]";
+    const clitic = /[\u0600-\u06FF]/.test(s.answer) ? "([\u0648\u0641]?[\u0628\u0643\u0644]?)" : "()";
+    const whole = s.prompt.replace(new RegExp("(?<!" + edge + ")" + clitic + escaped + "(?!" + edge + ")", "giu"), "$1_____");
+    p.prompt = whole !== s.prompt ? whole : s.prompt.replace(new RegExp(escaped, "giu"), "_____");
     p.bank = s.bank;
     p.length = Array.from(normalize(s.answer)).length;
   }
