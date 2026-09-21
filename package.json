@@ -13,7 +13,8 @@
     "db:generate": "drizzle-kit generate",
     "typecheck": "tsc --noEmit",
     "build:backend": "node scripts/build-backend.mjs",
-    "test:game": "node tests/game-service.mjs"
+    "test:game": "node tests/game-service.mjs",
+    "test:blank": "node tests/letters-blank.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
