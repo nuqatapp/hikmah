@@ -53,10 +53,11 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
     });
     const version=response.headers.get('x-hikmah-backend-version');
     if(version)headers.set('X-Hikmah-Backend-Version',version);
+    if(!response.ok)headers.set('X-Hikmah-Error-Stage','backend');
     return new Response(response.body, {status: response.status, headers});
   } catch(error) {
     // Stage and error class only: never log credentials, headers, player data or bodies.
     console.error('Hikmah proxy failure',{stage,errorClass:error instanceof Error?error.name:'unknown'});
-    return Response.json({error: 'The game service is unavailable. Your last saved progress is safe. Try again.'}, {status: 503});
+    return Response.json({error: 'The game service is temporarily unavailable. Please try again.'}, {status: 503,headers:{'X-Hikmah-Error-Stage':stage,'X-Hikmah-Error-Type':error instanceof Error?error.name:'unknown'}});
   }
 }
