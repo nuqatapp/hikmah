@@ -12,7 +12,7 @@ mkdirSync('.sites-runtime',{recursive:true});
 const db=new DatabaseSync(':memory:');db.exec('PRAGMA foreign_keys=ON');
 for(const file of readdirSync('drizzle').filter(x=>x.endsWith('.sql')).sort())db.exec(readFileSync('drizzle/'+file,'utf8'));
 db.exec('ALTER TABLE profiles ADD COLUMN auth_user_id TEXT;CREATE TABLE auth_users(id TEXT PRIMARY KEY)');
-const migration=readFileSync('supabase/migrations/20261113075118_privacy_account_lifecycle.sql','utf8');
+const migration=readFileSync('supabase/migrations/20261113084133_privacy_account_lifecycle.sql','utf8');
 db.exec(migration.replace(/hikmah\./g,'').replace(/auth\.users/g,'auth_users').split('\n').filter(x=>!/^\s*(ALTER TABLE|GRANT|REVOKE|CREATE POLICY)/.test(x)).join('\n'));
 class Statement{constructor(query,args=[]){this.query=query;this.args=args}bind(...args){return new Statement(this.query,args)}async first(){return db.prepare(this.query).get(...this.args)||null}async all(){return {results:db.prepare(this.query).all(...this.args)}}async run(){return {meta:db.prepare(this.query).run(...this.args)}}}
 globalThis.__localDb={prepare:q=>new Statement(q),batch:async statements=>{const out=[];for(const statement of statements)out.push(await statement.run());return out}};

@@ -10,7 +10,7 @@ const dir=mkdtempSync(join(tmpdir(),'hikmah-privacy-')),db=new DatabaseSync(':me
 db.exec('PRAGMA foreign_keys=ON');
 for(const file of readdirSync('drizzle').filter(x=>x.endsWith('.sql')).sort())db.exec(readFileSync('drizzle/'+file,'utf8'));
 db.exec('ALTER TABLE profiles ADD COLUMN auth_user_id TEXT; CREATE TABLE auth_users(id TEXT PRIMARY KEY)');
-const migration=readFileSync('supabase/migrations/20261113075118_privacy_account_lifecycle.sql','utf8');
+const migration=readFileSync('supabase/migrations/20261113084133_privacy_account_lifecycle.sql','utf8');
 db.exec(migration.replace(/hikmah\./g,'').replace(/auth\.users/g,'auth_users').split('\n').filter(line=>!/^\s*(ALTER TABLE|REVOKE|GRANT|CREATE POLICY)/.test(line)).join('\n'));
 class Statement{
  constructor(query,args=[]){this.query=query;this.args=args}

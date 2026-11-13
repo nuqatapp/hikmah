@@ -18,7 +18,7 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
         if (!allowed) return Response.json({error: 'Request origin is not allowed.'}, {status: 403});
       }
     }
-    const base = process.env.HIKMAH_BACKEND_URL;
+    const base = process.env.HIKMAH_PREVIEW_BACKEND_URL || process.env.HIKMAH_BACKEND_URL;
     const token = process.env.HIKMAH_BACKEND_TOKEN;
     if (!base || !token) throw new Error('The backend connection is not configured.');
     const target = new URL(base);
