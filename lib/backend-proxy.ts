@@ -2,6 +2,7 @@ import 'server-only';
 import {siteIdentity} from './site-identity';
 
 export async function proxyBackend(request: Request, resource: 'game' | 'avatar') {
+  let stage='configuration';
   try {
     const url = new URL(request.url);
     if (request.method === 'POST') {
@@ -29,7 +30,9 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
     if (Number(request.headers.get('content-length')) > limit) return Response.json({error: 'Request is too large.'}, {status: 413});
     const body = request.method === 'POST' ? await request.arrayBuffer() : undefined;
     if ((body?.byteLength || 0) > limit) return Response.json({error: 'Request is too large.'}, {status: 413});
+    stage='identity';
     const actor = await siteIdentity();
+    stage='upstream';
     const response = await fetch(target, {
       method: 'POST',
       headers: {
@@ -51,7 +54,9 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
     const version=response.headers.get('x-hikmah-backend-version');
     if(version)headers.set('X-Hikmah-Backend-Version',version);
     return new Response(response.body, {status: response.status, headers});
-  } catch {
+  } catch(error) {
+    // Stage and error class only: never log credentials, headers, player data or bodies.
+    console.error('Hikmah proxy failure',{stage,errorClass:error instanceof Error?error.name:'unknown'});
     return Response.json({error: 'The game service is unavailable. Your last saved progress is safe. Try again.'}, {status: 503});
   }
 }
