@@ -4,7 +4,7 @@ import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
-const dir=mkdtempSync(join(tmpdir(),'hikmah-transport-')),originalFetch=globalThis.fetch;
+const dir=mkdtempSync(join(tmpdir(),'hikmah-transport-')),originalFetch=globalThis.fetch,originalDocument=globalThis.document;
 try{
  await build({entryPoints:['lib/game/transport.ts'],outfile:join(dir,'transport.mjs'),bundle:true,platform:'node',format:'esm'});
  const {gameApi}=await import(pathToFileURL(join(dir,'transport.mjs')).href);
@@ -19,5 +19,8 @@ try{
  }
  mode='validation';await assert.rejects(()=>gameApi('create',{},undefined,'en'),/Choose a game and language/);
  mode='success';await gameApi('room',undefined,{id:'room'},'en');assert.match(sent.url,/action=room/);assert.match(sent.url,/id=room/);
+ globalThis.document={documentElement:{lang:'en'}};
+ globalThis.fetch=async()=>{document.documentElement.lang='ar';return new Response('unavailable',{status:503})};
+ await assert.rejects(()=>gameApi('dashboard'),error=>/[\u0600-\u06ff]/.test(error.message),'a pending request must use the current UI language when it fails');
  console.log('Passed: localized connection/service errors, safe non-JSON handling, no automatic move replay, authoritative state and validation messages preserved.');
-}finally{globalThis.fetch=originalFetch;rmSync(dir,{recursive:true,force:true})}
+}finally{globalThis.fetch=originalFetch;if(originalDocument===undefined)delete globalThis.document;else globalThis.document=originalDocument;rmSync(dir,{recursive:true,force:true})}
