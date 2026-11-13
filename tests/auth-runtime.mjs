@@ -11,6 +11,7 @@ const token = encode({alg:'HS256',typ:'JWT'}) + '.' + encode({sub:uuid, aud:'aut
 const session = {access_token:token, refresh_token:'local-refresh', expires_at:expires, expires_in:3600, token_type:'bearer', user};
 const cookie = 'sb-127-auth-token=base64-' + encode(session);
 let allowed = true;
+let deletedAccount=false;
 const mock = createServer(async (request,response) => {
   response.setHeader('Content-Type','application/json');
   if(request.url.startsWith('/auth/v1/user')) {
@@ -18,7 +19,7 @@ const mock = createServer(async (request,response) => {
     response.end(JSON.stringify(user));return;
   }
   if(request.url.startsWith('/auth/v1/settings')) {response.end(JSON.stringify({external:{google:true,email:true}}));return;}
-  if(request.url.startsWith('/auth/v1/logout')) {response.end('{}');return;}
+  if(request.url.startsWith('/auth/v1/logout')) {response.statusCode=deletedAccount?404:200;response.end(deletedAccount?'{"message":"User not found"}':'{}');return;}
   if(request.url.startsWith('/auth/v1/token')) {
     let body='';for await(const chunk of request)body+=chunk;
     if(JSON.parse(body).auth_code !== 'valid-code') {response.statusCode=400;response.end(JSON.stringify({message:'Bad code'}));return;}
@@ -66,7 +67,19 @@ try {
   assert.equal(blocked.status,403);
   const logout=await fetch(origin+'/auth/signout',{method:'POST',headers:{...headers,Origin:origin},redirect:'manual'});
   assert.equal(logout.status,303);assert.equal(logout.headers.get('location'),'/');
-  assert(logout.headers.get('set-cookie')?.includes('Max-Age=0'));
+  function assertSessionCleared(response){
+    const authCookies=response.headers.getSetCookie().filter(value=>/^sb-127-auth-token(?:\.\d+)?=/.test(value));
+    assert(authCookies.length>0,'sign-out must clear the session cookie');
+    for(const value of authCookies){
+      assert.match(value,/^sb-127-auth-token(?:\.\d+)?=;/,'session value must be empty');
+      const maxAge=value.match(/Max-Age=(-?\d+)/i),expires=value.match(/Expires=([^;]+)/i);
+      assert((maxAge&&Number(maxAge[1])<=0)||(expires&&Date.parse(expires[1])<Date.now()),'session cookie must expire immediately');
+    }
+  }
+  assertSessionCleared(logout);
+  deletedAccount=true;
+  const erasedLogout=await fetch(origin+'/auth/signout',{method:'POST',headers:{...headers,Origin:origin},redirect:'manual'});
+  assert.equal(erasedLogout.status,303);assertSessionCleared(erasedLogout);
   console.log('Passed: verified account, metadata isolation, revoked session rejection, password reset guard, PKCE callback, redirect isolation, logout and CSRF protection.');
 } finally {
   if(child.exitCode===null){const exited=once(child,'exit');child.kill('SIGTERM');await exited;}
