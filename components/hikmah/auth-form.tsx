@@ -9,12 +9,12 @@ import {StorageNotice} from './storage-notice';
 import {ACCOUNT_POLICY_VERSION} from '@/lib/policy';
 
 type Mode = 'signin' | 'signup' | 'forgot' | 'reset';
-export function AuthForm({configured, google, next, reset = false, callbackError = false}: {
-  configured: boolean; google: boolean; next: string; reset?: boolean; callbackError?: boolean;
+export function AuthForm({configured, google, next, reset = false, callbackError = false, initialMode = 'signin'}: {
+  configured: boolean; google: boolean; next: string; reset?: boolean; callbackError?: boolean; initialMode?: 'signin' | 'signup';
 }) {
   const {locale,setLocale}=useUiLocale();
   const arabic=locale==='ar';
-  const [mode, setMode] = useState<Mode>(reset ? 'reset' : 'signin');
+  const [mode, setMode] = useState<Mode>(reset ? 'reset' : initialMode);
   const [busy, setBusy] = useState(false);
   const [termsAccepted,setTermsAccepted]=useState(false),[legalCapacity,setLegalCapacity]=useState(false);
   const [message, setMessage] = useState(callbackError ? 'This sign-in link expired or could not be verified. Request a new link and open it in the same browser.' : '');
