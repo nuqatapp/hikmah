@@ -34,6 +34,9 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
       method: 'POST',
       headers: {
         'x-hikmah-server-token': token,
+        // Keep SQL-heavy execution beside the project's Frankfurt database.
+        // This removes the per-query transatlantic round trips from Netlify.
+        'x-region': process.env.HIKMAH_BACKEND_REGION || 'eu-central-1',
         'x-hikmah-actor': encodeURIComponent(JSON.stringify(actor)),
         'content-type': request.headers.get('content-type') || 'application/json',
       },
@@ -45,6 +48,8 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
       'Cache-Control': resource === 'avatar' && request.method === 'GET' && response.ok ? 'private, max-age=86400' : 'no-store',
       'X-Content-Type-Options': 'nosniff',
     });
+    const version=response.headers.get('x-hikmah-backend-version');
+    if(version)headers.set('X-Hikmah-Backend-Version',version);
     return new Response(response.body, {status: response.status, headers});
   } catch {
     return Response.json({error: 'The game service is unavailable. Your last saved progress is safe. Try again.'}, {status: 503});

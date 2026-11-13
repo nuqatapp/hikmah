@@ -38,11 +38,15 @@ try {
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   assert(ready, 'Next.js did not start: ' + output);
-  for (const path of ['/', '/play', '/multiplayer', '/profile', '/leaderboard', '/settings', '/admin', '/login']) {
+  for (const path of ['/', '/play', '/multiplayer', '/profile', '/leaderboard', '/settings', '/admin', '/login','/privacy','/terms','/refunds','/cookies','/contact','/licenses']) {
     const response = await fetch(origin + path);
     assert.equal(response.status, 200, path);
     assert((await response.text()).includes('Hikmah'), path);
   }
+  const privacy=await (await fetch(origin+'/privacy')).text();
+  assert(privacy.includes('Areej Ali')&&privacy.includes('Nuqat.app@gmail.com')&&privacy.includes('Jeddah'));
+  const notices=await fetch(origin+'/third-party-notices.txt');
+  assert.equal(notices.status,200);assert((await notices.text()).includes('HIKMAH THIRD-PARTY SOFTWARE NOTICES'));
   const redirect = await fetch(origin + '/signin-with-chatgpt?return_to=/admin', {redirect: 'manual'});
   assert.equal(redirect.status, 307);
   assert(redirect.headers.get('location').startsWith('/login'));
@@ -68,7 +72,7 @@ try {
   const post = await fetch(origin + '/api/game', {method: 'POST', headers: {Origin: origin, Cookie: cookie.split(';')[0], 'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
   assert.equal(post.status, 200);
   assert.deepEqual(JSON.parse((await post.json()).payload), payload);
-  console.log('Passed: 8 Next.js pages, login redirect, API proxy, guest cookies, forged identity rejection, cross-origin rejection.');
+  console.log('Passed: 14 Next.js pages, legal operator details, software notices, login redirect, API proxy, guest cookies, forged identity rejection, cross-origin rejection.');
 } finally {
   if (child.exitCode === null) {
     const exited = once(child, 'exit');

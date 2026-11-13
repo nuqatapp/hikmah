@@ -11,6 +11,11 @@ export async function run(sql:string,...args:any[]){return database().prepare(sq
 export async function batch(stmts:[string,any[]][]){return database().batch(stmts.map(([q,a])=>database().prepare(q).bind(...a)));}
 export async function init(){if(await one("SELECT value FROM site_settings WHERE key='seed_v1'"))return;const c=seeds as Content[];for(let i=0;i<c.length;i+=25)await batch(c.slice(i,i+25).map(x=>['INSERT OR IGNORE INTO content(id,kind,locale,prompt,answer,choices,clues,explanation) VALUES(?,?,?,?,?,?,?,?)',[x.id,x.kind,x.locale,x.prompt,x.answer,JSON.stringify(x.choices),JSON.stringify(x.clues),x.explanation]]));await run("INSERT OR IGNORE INTO site_settings(key,value) VALUES('seed_v1','1')");}
 export async function ensureProfile(u:Awaited<ReturnType<typeof identity>>){if(!u.signed)return null;
+ const existing=await profile(u.id);
+ if(existing){
+  if(u.authUserId&&!existing.auth_user_id){await run('UPDATE profiles SET auth_user_id=? WHERE id=? AND auth_user_id IS NULL',u.authUserId,u.id);existing.auth_user_id=u.authUserId;}
+  return existing;
+ }
  await batch([
  ["INSERT OR IGNORE INTO profiles(id,name,created_at) VALUES(?,?,?)",[u.id,u.name,now()]],
  ["INSERT OR IGNORE INTO wallet(id,user,amount,reason,created_at) VALUES(?,?,20,'Welcome',?)",['welcome:'+u.id,u.id,now()]],
@@ -19,7 +24,7 @@ export async function ensureProfile(u:Awaited<ReturnType<typeof identity>>){if(!
  return profile(u.id);
 }
 export async function isAdmin(id:string){const a=await one("SELECT value FROM site_settings WHERE key='admin_user'");return a?.value===id;}
-export async function profile(id:string){const p=await one('SELECT * FROM profiles WHERE id=?',id);if(!p)return null;return {...p,balance:(await one('SELECT COALESCE(SUM(amount),0) AS balance FROM wallet WHERE user=?',id)).balance,isAdmin:await isAdmin(id)};}
+export async function profile(id:string){const p=await one("SELECT p.*,(SELECT COALESCE(SUM(w.amount),0) FROM wallet w WHERE w.user=p.id) AS balance,EXISTS(SELECT 1 FROM site_settings s WHERE s.key='admin_user' AND s.value=p.id) AS is_admin FROM profiles p WHERE p.id=?",id);if(!p)return null;const {is_admin,...fields}=p;return {...fields,isAdmin:!!is_admin};}
 export async function requireAccount(){const u=await identity();if(!u.signed)throw new GameError('Sign in to continue.',401);const p=await ensureProfile(u);if(p?.banned)throw new GameError('This account is suspended.',403);return u;}
 export async function requireAdmin(){const u=await requireAccount();if(!await isAdmin(u.id))throw new GameError('Administrator access required.',403);return u;}
 function contentRow(r:any):Content{return {...r,choices:JSON.parse(r.choices),clues:JSON.parse(r.clues)};}
@@ -38,9 +43,9 @@ export async function joinRoom(code:string,u:Awaited<ReturnType<typeof identity>
 async function memberRoom(id:string,user:string){const r=await one('SELECT r.* FROM rooms r JOIN members m ON m.room=r.id WHERE r.id=? AND m.user=? AND m.left_at IS NULL',id,user);if(!r)throw new GameError('Join this room to continue.',403);return r;}
 export async function startRoom(id:string,user:string){const r=await memberRoom(id,user);if(r.host!==user)throw new GameError('Only the host can start the match.',403);if((await one('SELECT COUNT(*) AS n FROM members WHERE room=? AND left_at IS NULL',id)).n<2)throw new GameError('At least two players are needed.');const t=now()+3000;await batch([["UPDATE rooms SET status='active',round=1,updated_at=? WHERE id=? AND status='waiting'",[now(),id]],["UPDATE rounds SET started_at=? WHERE room=? AND number=1 AND started_at IS NULL AND EXISTS(SELECT 1 FROM rooms WHERE id=? AND status='active')",[t,id,id]]]);}
 export async function leaveRoom(id:string,user:string){const r=await memberRoom(id,user);await run('UPDATE members SET left_at=? WHERE room=? AND user=?',now(),id,user);const other=await one('SELECT user FROM members WHERE room=? AND left_at IS NULL ORDER BY joined_at LIMIT 1',id);if(!other)await run("UPDATE rooms SET status='abandoned',updated_at=? WHERE id=? AND status!='finished'",now(),id);else if(r.host===user)await run('UPDATE rooms SET host=? WHERE id=?',other.user,id);}
-export async function advance(id:string,user:string,manual=false){let r=await memberRoom(id,user);const t=now();await run('UPDATE members SET last_seen=? WHERE room=? AND user=?',t,id,user);
+export async function advance(id:string,user:string,manual=false){let r=await memberRoom(id,user);const t=now();if(r.mode==='multi')await run('UPDATE members SET last_seen=? WHERE room=? AND user=? AND last_seen<?',t,id,user,t-5000);
  // An active participant takes over an absent host after a grace period.
- await run('UPDATE rooms SET host=? WHERE id=? AND host!=? AND EXISTS(SELECT 1 FROM members WHERE room=? AND user=rooms.host AND (last_seen<? OR left_at IS NOT NULL))',user,id,user,id,t-45000);
+ if(r.mode==='multi')await run('UPDATE rooms SET host=? WHERE id=? AND host!=? AND EXISTS(SELECT 1 FROM members WHERE room=? AND user=rooms.host AND (last_seen<? OR left_at IS NOT NULL))',user,id,user,id,t-45000);
  if(r.status!=='active')return;
  let rd=await one('SELECT * FROM rounds WHERE room=? AND number=?',id,r.round);if(!rd?.started_at)return;
  if(r.mode==='multi'&&!rd.ended_at){if(t>=rd.started_at+ROUND_SECONDS[r.kind as Kind]*1000)await run("UPDATE rounds SET ended_at=?,outcome='timeout' WHERE id=? AND ended_at IS NULL",t,rd.id);else if(r.kind==='mcq')await run("UPDATE rounds SET ended_at=?,outcome='no_correct' WHERE id=? AND ended_at IS NULL AND (SELECT COUNT(*) FROM attempts WHERE round=?)>=(SELECT COUNT(*) FROM members WHERE room=? AND left_at IS NULL)",t,rd.id,rd.id,id);rd=await one('SELECT * FROM rounds WHERE id=?',rd.id);}

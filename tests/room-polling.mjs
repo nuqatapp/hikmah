@@ -3,6 +3,7 @@ import {build} from 'esbuild';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {pathToFileURL} from 'node:url';
 // Exercise the actual Play effect with a delayed transport and controlled timers.
 const dir=mkdtempSync(join(tmpdir(),'hikmah-poll-'));
 const effects=[],updates=[],pending=[],timers=new Map();let index=0,nextTimer=0,calls=0;
@@ -16,7 +17,7 @@ try{
   b.onResolve({filter:/^(react|react\/jsx-runtime|lucide-react|\.\/shared|@\/components\/ui\/)/},args=>({path:args.path,namespace:'mock'}));
   b.onLoad({filter:/.*/,namespace:'mock'},({path})=>({contents:path==='react'?'export const {useState,useRef,useCallback,useEffect}=globalThis.__hooks':path==='react/jsx-runtime'?'export const Fragment="fragment"; export const jsx=()=>null; export const jsxs=jsx':path==='./shared'?'export const api=globalThis.__roomApi; export const avatar=()=>null, Loading=()=>null, title=()=>""':`export const ${path==='lucide-react'?'ArrowLeft,ArrowRight,Check,CheckCircle2,Clock,Copy,Delete,Flag,RotateCcw,Trophy':path.endsWith('alert-dialog')?'AlertDialog,AlertDialogAction,AlertDialogCancel,AlertDialogContent,AlertDialogDescription,AlertDialogFooter,AlertDialogHeader,AlertDialogTitle,AlertDialogTrigger':'Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle'} = null;`.replace(/export const (.*) = null;/,(_,names)=>'export const '+names.split(',').map(n=>n+'=()=>null').join(',')+';')}));
  }}]});
- const {Play}=await import(join(dir,'play.mjs'));Play({t:x=>x,locale:'en',refresh(){}});
+ const {Play}=await import(pathToFileURL(join(dir,'play.mjs')).href);Play({t:x=>x,locale:'en',refresh(){}});
  const cleanup=effects[1]();assert.equal(calls,1);assert.equal(timers.size,0,'slow responses must not overlap with new polls');
  await flush();assert.equal(calls,1);
  pending.shift().resolve({serverTime:Date.now(),marker:'slow-success'});await flush();

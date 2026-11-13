@@ -3,6 +3,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {readFileSync,readdirSync,mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {pathToFileURL} from 'node:url';
 const esbuild=await import('esbuild');
 const tmp=mkdtempSync(join(tmpdir(),'hikmah-test-'));
 const sql=new DatabaseSync(':memory:');
@@ -14,7 +15,7 @@ let serial=Promise.resolve();
 globalThis.__db={prepare:q=>new Statement(q),batch:ss=>{const result=serial.then(async()=>{sql.exec('BEGIN');try{const out=[];for(const s of ss)out.push(await s.run());sql.exec('COMMIT');return out}catch(e){sql.exec('ROLLBACK');throw e}});serial=result.catch(()=>{});return result}};
 await esbuild.build({entryPoints:['lib/game/service.ts'],outfile:join(tmp,'service.mjs'),bundle:true,platform:'node',format:'esm',plugins:[{name:'local-test-adapters',setup(b){b.onResolve({filter:/^(@\/db\/raw|@\/app\/chatgpt-auth|next\/headers)$/},args=>({path:args.path,namespace:'mock'}));b.onLoad({filter:/.*/,namespace:'mock'},args=>({contents:args.path==='@/db/raw'?'export function database(){return globalThis.__db}':args.path==='next/headers'?'export async function cookies(){return {get(){return {value:"g_00000000-0000-0000-0000-000000000000"}},set(){}}}':'export async function getChatGPTUser(){return null}'}))}}]});
 await esbuild.build({entryPoints:['lib/game/rules.ts'],outfile:join(tmp,'rules.mjs'),bundle:true,platform:'node',format:'esm'});
-const s=await import(join(tmp,'service.mjs')),rules=await import(join(tmp,'rules.mjs'));
+const s=await import(pathToFileURL(join(tmp,'service.mjs')).href),rules=await import(pathToFileURL(join(tmp,'rules.mjs')).href);
 let clock=1700000000000;const original=Date.now;Date.now=()=>clock;
 const a={id:'test-alice',name:'Alice',signed:true},b={id:'test-bob',name:'Bob',signed:true},guest={id:'g_00000000-0000-0000-0000-000000000000',name:'Guest',signed:false};
 function solve(snapshot){return snapshot.kind==='mcq'?Number(snapshot.answer):snapshot.kind==='letters'?snapshot.answer:Object.fromEntries(Object.entries(snapshot.codes).map(([letter,code])=>[code,letter]));}

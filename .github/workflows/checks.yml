@@ -1,0 +1,30 @@
+name: Game and privacy checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck
+      - run: pnpm run test:game
+      - run: pnpm run test:blank
+      - run: node tests/privacy-lifecycle.mjs
+      - run: node tests/room-polling.mjs
+      - run: pnpm run build:backend
+      - run: pnpm run build
+      - run: node tests/next-runtime.mjs
+      - run: node tests/auth-runtime.mjs
