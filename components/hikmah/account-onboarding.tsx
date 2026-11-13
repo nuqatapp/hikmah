@@ -2,7 +2,7 @@
 import {useState,type FormEvent} from 'react';
 import Link from 'next/link';
 import {ACCOUNT_POLICY_VERSION,type AccountCapacity} from '@/lib/policy';
-import {api,type Props} from './shared';
+import {gameErrorText,api,type Props} from './shared';
 
 export function AccountOnboarding({t,onAccepted}:{t:Props['t'];onAccepted:()=>Promise<void>}){
  const [capacity,setCapacity]=useState<AccountCapacity>('self'),[relationship,setRelationship]=useState('parent'),[accepted,setAccepted]=useState(false),[legalCapacity,setLegalCapacity]=useState(false),[childDataConsent,setChildDataConsent]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -20,7 +20,7 @@ export function AccountOnboarding({t,onAccepted}:{t:Props['t'];onAccepted:()=>Pr
    <label className="check-field"><input type="checkbox" checked={legalCapacity} onChange={e=>setLegalCapacity(e.target.checked)} required/>{t('I have legal capacity to accept these terms. The verified account email belongs to me as account holder or legal guardian.','أملك أهلية قبول هذه الشروط، وبريد الحساب المؤكد يخصني بصفتي صاحب الحساب أو الولي النظامي.')}</label>
    <label className="check-field"><input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)} required/><span>{t('I accept the ','أوافق على ')}<Link href="/terms" target="_blank">{t('terms','الشروط')}</Link>{t(' and have read the ',' واطلعت على ')}<Link href="/privacy" target="_blank">{t('privacy notice','إشعار الخصوصية')}</Link>.</span></label>
    <p className="muted">{t('No marketing consent is requested. Guardians can review, export or erase the account data in Settings, or contact support.','لا نطلب موافقة تسويقية. يمكن للأولياء مراجعة بيانات الحساب أو تنزيلها أو محوها من الإعدادات أو عبر الدعم.')}</p>
-   {error&&<p role="alert" className="notice error">{error}</p>}
+   {error&&<p role="alert" className="notice error">{gameErrorText(error,t)}</p>}
    <button className="btn" disabled={busy||!accepted||!legalCapacity||(capacity==='guardian'&&!childDataConsent)}>{busy?t('Saving…','جارٍ الحفظ…'):t('Save and continue','حفظ ومتابعة')}</button>
   </form>
   <Link className="back-link" href="/settings">{t('Account and data controls','أدوات الحساب والبيانات')}</Link>

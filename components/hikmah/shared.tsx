@@ -6,7 +6,7 @@ export type Profile={id:string;name:string;username:string;country:string;city:s
 export type Player={user:string;name:string;avatar:string|null;wins:number;last_seen:number;left_at:number|null};
 export type RoomState={room:{id:string;code:string;kind:Kind;locale:Locale;mode:'solo'|'multi';status:string;host:string;total:number};round:{id:string;number:number;startedAt:number;endedAt:number|null;winner:string|null;outcome:string|null;puzzle:Puzzle;solution:string|null;explanation:string|null;submitted:boolean;deadline:number|null}|null;players:Player[];serverTime:number;me:string;profile:Profile|null;history:{number:number;winner:string|null;outcome:string}[]};
 export type Props={locale:Locale;t:(en:string,ar:string)=>string;questionLocale:Locale;setQuestionLocale:(l:Locale)=>void;profile:Profile|null;signed:boolean;refresh:()=>Promise<void>;onProfileChange?:(profile:Profile|null)=>void};
-export {gameApi as api} from '@/lib/game/transport';
+export {gameApi as api,gameErrorText} from '@/lib/game/transport';
 export function title(k:Kind,l:Locale){return {letters:l==='ar'?'الحروف الناقصة':'Missing Letters',mcq:l==='ar'?'اختيار من متعدد':'Multiple Choice',cryptogram:l==='ar'?'الشفرة':'Cryptogram'}[k]}
 export function avatar(p:{name:string;avatar?:string|null}){return p.avatar?<img className="avatar" src={'/api/avatar?key='+encodeURIComponent(p.avatar)} alt=""/>:<span className="avatar">{p.name?.slice(0,1).toUpperCase()||'H'}</span>}
 export function Loading(){return <div className="panel" role="status" aria-label="Loading"><div className="skeleton" style={{width:'40%'}}/><div className="skeleton"/><div className="skeleton" style={{width:'70%'}}/></div>}

@@ -2,7 +2,7 @@
 import {type Kind,type Locale} from '@/lib/game/rules';
 import {ArrowRight,Check,Coins,Globe,User,Users} from 'lucide-react';
 import {useState} from 'react';
-import {api,kinds,Picker,title,type Props} from './shared';
+import {gameErrorText,api,kinds,Picker,title,type Props} from './shared';
 
 export function GameArt({kind,locale}:{kind:Kind;locale:Locale}) {
  return <div className={'game-art art-'+kind} aria-hidden="true">
@@ -44,9 +44,9 @@ export function Home({t,locale,questionLocale,setQuestionLocale,signed,active}:P
    <SamplePuzzle key={locale} locale={locale} t={t}/>
   </section>
   <section className="game-selection" id="choose-game" aria-labelledby="games-heading">
-   <div className="selection-heading"><div><p className="eyebrow">{t('Pick your challenge','وش تحدّيك اليوم؟')}</p><h2 id="games-heading">{t('Three games.','ثلاث ألعاب.')} <em>{t('Your move.','والاختيار لك.')}</em></h2><p className="muted">{t('Choose a game and puzzle language.','اختر لعبتك ولغة الألغاز.')}</p></div><span className="selection-doodle" aria-hidden="true">{t('GO!','يلا!')}</span></div>
+   <div className="selection-heading"><div><p className="eyebrow">{t('Pick your challenge','وش تحدّيك اليوم؟')}</p><h2 id="games-heading">{t('Three games.','ثلاث ألعاب.')}{' '}<em>{t('Your move.','والاختيار لك.')}</em></h2><p className="muted">{t('Choose a game and puzzle language.','اختر لعبتك ولغة الألغاز.')}</p></div><span className="selection-doodle" aria-hidden="true">{t('GO!','يلا!')}</span></div>
    <div className="modebar"><div className="mode-switch" role="group" aria-label={t('Play mode','طريقة اللعب')}><button aria-pressed={mode==='solo'} onClick={()=>setMode('solo')}><User size={17}/>{t('Solo play','لعب فردي')}</button><button aria-pressed={mode==='multi'} onClick={()=>setMode('multi')}><Users size={17}/>{t('With friends','مع الأصدقاء')}</button></div><div className="language-pick"><Globe size={17}/><span>{t('Puzzle language','لغة الألغاز')}</span><Picker value={questionLocale} onChange={v=>setQuestionLocale(v as Locale)} label={t('Puzzle language','لغة الألغاز')} items={[["en","English"],["ar","العربية"]]}/></div></div>
-   {error&&<div className="notice error start-error" role="alert">{error}</div>}
+   {error&&<div className="notice error start-error" role="alert">{gameErrorText(error,t)}</div>}
    {active.length>0&&<div className="notice unfinished"><strong>{t('Pick up where you left off','كمّل من وين وقفت')}</strong><div className="flex-row">{active.map(a=><a key={a.id} href={'/play?id='+a.id}>{title(a.kind,locale)} · {a.mode==='multi'?t('Friends','الأصدقاء'):t('Solo','فردي')}<ArrowRight size={16}/></a>)}</div></div>}
    <div className="games">{kinds.map((kind,i)=><article className="game-card" key={kind}>
     <GameArt kind={kind} locale={locale}/><div className="card-body"><span className="eyebrow">{['01 / '+t('Complete the proverb','كمّل الحكمة'),'02 / '+t('Test your knowledge','اختبر معلوماتك'),'03 / '+t('Crack the code','فك الشفرة')][i]}</span><h3>{title(kind,locale)}</h3><p>{[t('Choose and arrange the missing letters to complete a proverb.','اختر الحروف الناقصة ورتّبها عشان تكتمل الحكمة.'),t('Read the question and choose the correct answer.','اقرأ السؤال واختر الإجابة الصحيحة من الخيارات.'),t('Match numbers with letters to reveal the hidden wisdom.','اربط الأرقام بالحروف واكتشف الحكمة المخفية.')][i]}</p><div className="card-foot"><span>{mode==='multi'?t('5 rounds · First to solve','5 جولات · الأسرع بالحل'):t('10 puzzles · At your pace','10 ألغاز · على راحتك')}</span><button className="play-link" disabled={!!busy} onClick={()=>start(kind)}>{busy===kind?t('Preparing…','جارٍ التحضير…'):mode==='multi'?t('Create room','أنشئ غرفة'):t('Play','العب')}<ArrowRight size={17}/></button></div></div>

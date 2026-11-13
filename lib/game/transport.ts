@@ -1,5 +1,17 @@
 import type {Locale} from './rules';
 
+const clientErrors=[
+ ['The game service is temporarily unavailable. Please try again.','خدمة اللعبة غير متاحة مؤقتًا. حاول مرة أخرى.'],
+ ['Could not reach the game. Check your connection and try again.','تعذر الاتصال باللعبة. تحقق من اتصالك وحاول مرة أخرى.'],
+ ['Could not complete the request. Please try again.','تعذر تنفيذ الطلب. حاول مرة أخرى.'],
+] as const;
+
+// Stored errors must follow a later language switch without resending a game move.
+export function gameErrorText(message:string,t:(en:string,ar:string)=>string){
+ const known=clientErrors.find(([en,ar])=>message===en||message===ar);
+ return known?t(known[0],known[1]):message;
+}
+
 // One request per action. Never automatically replay a possibly committed move.
 export async function gameApi(action:string,body?:Record<string,unknown>,query?:Record<string,string>,locale?:Locale){
  const ar=()=>(locale||(typeof document!=='undefined'?document.documentElement.lang:'en'))==='ar';
