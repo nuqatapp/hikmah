@@ -71,11 +71,11 @@ export function AuthForm({configured, google, next, reset = false, callbackError
   }
   const titles = {signin: t('Welcome back.', 'مرحبًا بعودتك.'), signup: t('Join Hikmah.', 'انضم إلى حكمة.'), forgot: t('Reset your password.', 'أعد تعيين كلمة المرور.'), reset: t('Choose a new password.', 'اختر كلمة مرور جديدة.')};
   return <main className="shell main" lang={locale} dir={arabic ? 'rtl' : 'ltr'}><section className="panel stack" style={{maxWidth:480, margin:'0 auto'}}>
-    <div className="flex-row spread"><Link href="/" className="brand"><img src="/logo.png" alt="" width={45} height={45}/><span className="brand-name">Hikmah</span></Link><button type="button" className="back-link" onClick={() => setLocale(arabic?'en':'ar')}>{arabic ? 'English' : 'العربية'}</button></div>
+    <div className="flex-row spread"><Link href="/" className="brand"><span className="brand-mark" aria-hidden="true">ح</span><span className="brand-name">{t('Hikmah','حكمة')}</span></Link><button type="button" className="btn outline" onClick={() => setLocale(arabic?'en':'ar')}>{arabic ? 'English' : 'العربية'}</button></div>
     <h1 style={{fontSize:'2.3rem'}}>{titles[mode]}</h1>
     <p className="muted">{t('Save your progress and play with friends.', 'احفظ تقدمك والعب مع أصدقائك.')}</p>
     {!configured ? <p role="status">{t('Sign-in is being configured. Solo play is available as a guest.', 'جارٍ إعداد تسجيل الدخول. يمكنك اللعب الفردي كضيف.')}</p> : <>
-      {(mode === 'signin' || mode === 'signup') && <><button type="button" className="btn outline" disabled={busy || !google} onClick={withGoogle}>{t('Continue with Google', 'المتابعة باستخدام جوجل')}</button>{!google && <p className="muted" style={{fontSize:13}}>{t('Google sign-in is not available yet.', 'تسجيل الدخول بجوجل غير متاح حاليًا.')}</p>}</>}
+      {google && (mode === 'signin' || mode === 'signup') && <button type="button" className="btn outline" disabled={busy} onClick={withGoogle}>{t('Continue with Google', 'المتابعة باستخدام جوجل')}</button>}
       <form onSubmit={submit} className="stack">
         <p className="muted">{t('We use this information to operate your account. ','نستخدم هذه المعلومات لتشغيل حسابك. ')}<Link href="/privacy" target="_blank">{t('Privacy details','تفاصيل الخصوصية')}</Link></p>
         {mode === 'signup' && <p>{t('All ages can play. If the player cannot legally consent, their legal guardian must create and manage the account using the guardian’s email. Choose a nickname, not a child’s real name.','يمكن لجميع الأعمار اللعب. إذا لم يملك اللاعب أهلية الموافقة، فعلى وليه النظامي إنشاء الحساب وإدارته ببريد الولي. اختر اسمًا مستعارًا وليس اسم الطفل الحقيقي.')}</p>}

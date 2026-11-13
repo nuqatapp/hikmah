@@ -37,4 +37,4 @@ Verify SMTP delivery, confirmation/reset templates, sender identity, session rev
 
 The game currently has no monetary checkout, subscription or paid HR. Re-review total prices, invoices, cancellation/refund rights and renewals before adding payments. Do not add unsupported outcome claims or fabricated reviews.
 
-Keep evidence of logo/content ownership and permission for imported wording or images. Software notices are served at `/third-party-notices.txt`; regenerate them after dependency changes. System font names do not mean the application distributes those font files.
+Keep evidence of logo/content ownership and permission for imported wording or images. Software notices are served at `/third-party-notices.txt`; regenerate them after dependency changes. The selected design self-hosts unmodified Lalezar and Readex Pro WOFF2 files. Their SIL OFL licences and Fontsource source/version credits are served under `/assets/fonts/`; preserve these notices when changing typography.
