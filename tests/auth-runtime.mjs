@@ -35,7 +35,7 @@ const reserve=createServer();reserve.listen(0,'127.0.0.1');await once(reserve,'l
 const origin='http://127.0.0.1:'+port;
 const upstream='http://127.0.0.1:'+mock.address().port;
 let output='';
-const child=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(port)],{env:{...process.env,NODE_ENV:'production',NEXT_PUBLIC_SUPABASE_URL:upstream,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'test-key',HIKMAH_BACKEND_URL:upstream+'/backend',HIKMAH_BACKEND_TOKEN:'test-token'},stdio:['ignore','pipe','pipe']});
+const child=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(port)],{env:{...process.env,NODE_ENV:'production',NEXT_PUBLIC_SUPABASE_URL:upstream,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'test-key',HIKMAH_BACKEND_URL:upstream+'/backend',HIKMAH_BACKEND_TOKEN:'a'.repeat(64)},stdio:['ignore','pipe','pipe']});
 child.stdout.on('data',v=>output+=v);child.stderr.on('data',v=>output+=v);
 try {
   let ready=false;

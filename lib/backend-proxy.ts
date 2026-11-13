@@ -20,8 +20,9 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
       }
     }
     const base = process.env.HIKMAH_PREVIEW_BACKEND_URL || process.env.HIKMAH_BACKEND_URL;
-    const token = process.env.HIKMAH_BACKEND_TOKEN;
+    const token = process.env.HIKMAH_BACKEND_TOKEN?.trim();
     if (!base || !token) throw new Error('The backend connection is not configured.');
+    if(!/^[a-f0-9]{64}$/.test(token))throw Object.assign(new Error('The backend credential format is invalid.'),{name:'CredentialFormatError'});
     const target = new URL(base);
     target.search = url.search;
     target.searchParams.set('resource', resource);
@@ -58,6 +59,9 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
   } catch(error) {
     // Stage and error class only: never log credentials, headers, player data or bodies.
     console.error('Hikmah proxy failure',{stage,errorClass:error instanceof Error?error.name:'unknown'});
-    return Response.json({error: 'The game service is temporarily unavailable. Please try again.'}, {status: 503,headers:{'X-Hikmah-Error-Stage':stage,'X-Hikmah-Error-Type':error instanceof Error?error.name:'unknown'}});
+    const cause=(error as {cause?:{code?:unknown}})?.cause?.code;
+    const headers=new Headers({'X-Hikmah-Error-Stage':stage,'X-Hikmah-Error-Type':error instanceof Error?error.name:'unknown'});
+    if(typeof cause==='string'&&/^[A-Z_]{1,60}$/.test(cause))headers.set('X-Hikmah-Error-Code',cause);
+    return Response.json({error: 'The game service is temporarily unavailable. Please try again.'}, {status: 503,headers});
   }
 }

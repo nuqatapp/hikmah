@@ -3,7 +3,7 @@ import {createServer} from 'node:http';
 import {spawn} from 'node:child_process';
 import {once} from 'node:events';
 
-const token = 'local-test-token';
+const token = 'a'.repeat(64);
 let calls = 0;
 const backend = createServer(async (request, response) => {
   assert.equal(request.headers['x-hikmah-server-token'], token);

@@ -46,7 +46,7 @@ const server=createServer(async(request,response)=>{
   }
   if(url.pathname==='/auth/v1/logout'){response.end('{}');return}
   if(url.pathname.startsWith('/auth/')){response.statusCode=400;response.end(JSON.stringify({message:'Only the disposable fixture accounts can sign in. No emails are sent.'}));return}
-  if(request.headers['x-hikmah-server-token']!=='local-preview-token'){response.statusCode=401;response.end('{}');return}
+  if(request.headers['x-hikmah-server-token']!=='a'.repeat(64)){response.statusCode=401;response.end('{}');return}
   const actor=JSON.parse(decodeURIComponent(request.headers['x-hikmah-actor']||''));
   const method=url.searchParams.get('method');url.searchParams.delete('resource');url.searchParams.delete('method');
   const headers=new Headers();if(bytes.length){headers.set('Content-Type','application/json');headers.set('Content-Length',String(bytes.length))}
@@ -57,7 +57,7 @@ const server=createServer(async(request,response)=>{
 server.listen(0,'127.0.0.1');await once(server,'listening');
 const reserve=createServer();reserve.listen(0,'127.0.0.1');await once(reserve,'listening');const port=reserve.address().port;await new Promise(resolve=>reserve.close(resolve));origin='http://127.0.0.1:'+port;
 const upstream='http://127.0.0.1:'+server.address().port;
-const child=spawn(process.execPath,['node_modules/next/dist/bin/next','dev','--hostname','127.0.0.1','--port',String(port)],{env:{...process.env,NEXT_TELEMETRY_DISABLED:'1',NEXT_PUBLIC_SUPABASE_URL:upstream,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'local-preview-key',HIKMAH_BACKEND_URL:upstream+'/function',HIKMAH_BACKEND_TOKEN:'local-preview-token'},windowsHide:true,stdio:['ignore','pipe','pipe']});
+const child=spawn(process.execPath,['node_modules/next/dist/bin/next','dev','--hostname','127.0.0.1','--port',String(port)],{env:{...process.env,NEXT_TELEMETRY_DISABLED:'1',NEXT_PUBLIC_SUPABASE_URL:upstream,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'local-preview-key',HIKMAH_BACKEND_URL:upstream+'/function',HIKMAH_BACKEND_TOKEN:'a'.repeat(64)},windowsHide:true,stdio:['ignore','pipe','pipe']});
 child.stdout.pipe(process.stdout);child.stderr.pipe(process.stderr);
 console.log(JSON.stringify({preview:origin,fixtureUsers:[...users.keys()],fixturePassword:password,pid:process.pid,childPid:child.pid,note:'Local-only fake accounts; no email or production calls. Send stop on stdin to close.'}));
 let stopping=false;async function stop(){if(stopping)return;stopping=true;child.kill();server.closeAllConnections();server.close();db.close();process.exit(0)}
