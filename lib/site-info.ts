@@ -4,6 +4,7 @@ export const SITE_INFO = {
   email: 'Nuqat.app@gmail.com',
   origin: 'https://hikmahgame.com',
   policyVersion: ACCOUNT_POLICY_VERSION,
+  privacyUpdated: '2026-11-14',
   operator: process.env.NEXT_PUBLIC_HIKMAH_OPERATOR || 'Areej Ali — Hikmah personal project / مشروع حكمة الشخصي',
   address: process.env.NEXT_PUBLIC_HIKMAH_BUSINESS_ADDRESS || 'Jeddah, Saudi Arabia / جدة، المملكة العربية السعودية',
   registration: process.env.NEXT_PUBLIC_HIKMAH_REGISTRATION || '',

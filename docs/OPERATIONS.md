@@ -45,6 +45,14 @@ Both disposable accounts were then erased through the live API. Auth/provider cl
 
 The owner created a Resend account and opened the pending `auth.hikmahgame.com` domain. The displayed sending region is Tokyo. Its actual required DNS records are one DKIM TXT and two CNAMEs; use the current dashboard values, not a generic older SPF/MX example. DNS and SMTP/template activation remain pending. Do not overwrite root website or mail-forwarding records. The essential-storage notice now occupies normal page flow so it cannot cover sign-in errors, buttons or keyboard focus.
 
+### SMTP activation and real-token format fix
+
+The three required DNS records were saved in Namecheap. Public DNS matches every provider value; the website addresses, www CNAME and root mail forwarding match the before-change snapshot. Resend now reports the domain Verified and Forge Ready. Open/click tracking is not configured. The default opportunistic recipient TLS policy remains; an encrypted-only policy was not enabled because the owner did not choose that availability tradeoff.
+
+Supabase custom SMTP is enabled with `smtp.resend.com:465`, username `resend`, sender `noreply@auth.hikmahgame.com` and name `Hikmah / حكمة`. Its key is sending-only and restricted to this domain. No key is in source, reports or local files; the temporary clipboard and runtime variable were cleared. Supabase raised the email limit to 30/hour; the provider's own quota still applies. Both hosted email templates were replaced and their complete saved source was compared with the prepared HTML after reloading the editor. The first new signup request was accepted and the owner received the new-format link.
+
+That real link exposed a validator error: Supabase hashes can carry a `pkce_` prefix, which the hex-only landing/POST validators rejected. The shared bounded URL-safe validator now keeps the opaque hash unchanged and delegates authenticity/expiry to Supabase. Runtime checks cover prefixed signup/recovery tokens without an originating-browser cookie, malformed hashes, upstream rejection, scanner GETs, replay and redirect isolation. Finish real confirmation/reset verification before declaring the email work complete. Public privacy wording now names Resend and its actual sending/storage locations, with its own updated date. The removed registration-status disclaimer must not be reinstated or replaced with an invented registration number.
+
 ## Rights requests
 
 Check the support inbox regularly. Record receipt date, request type, due date, identity-verification method, outcome, necessary retention exception and completion date in a restricted register. Do not copy passwords, identity documents or unnecessary account data into tickets.

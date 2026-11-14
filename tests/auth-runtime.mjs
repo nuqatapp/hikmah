@@ -14,6 +14,7 @@ let allowed = true;
 let deletedAccount=false;
 let emailVerifications=0;
 const consumedEmailTokens=new Set();
+const prefixedEmailToken='pkce_'+'b'.repeat(56);
 const mock = createServer(async (request,response) => {
   response.setHeader('Content-Type','application/json');
   if(request.url.startsWith('/auth/v1/user')) {
@@ -25,7 +26,7 @@ const mock = createServer(async (request,response) => {
     emailVerifications++;
     let body='';for await(const chunk of request)body+=chunk;
     const input=JSON.parse(body),key=input.type+':'+input.token_hash;
-    if(input.token_hash!=='a'.repeat(64)||consumedEmailTokens.has(key)){response.statusCode=400;response.end('{"message":"Invalid or expired token"}');return;}
+    if(!['a'.repeat(64),prefixedEmailToken].includes(input.token_hash)||consumedEmailTokens.has(key)){response.statusCode=400;response.end('{"message":"Invalid or expired token"}');return;}
     consumedEmailTokens.add(key);response.end(JSON.stringify(session));return;
   }
   if(request.url.startsWith('/auth/v1/logout')) {response.statusCode=deletedAccount?404:200;response.end(deletedAccount?'{"message":"User not found"}':'{}');return;}
@@ -77,22 +78,33 @@ try {
   assert.equal(confirmPage.status,200);assert.match(confirmPage.headers.get('cache-control'),/no-store/);
   const confirmationHtml=await confirmPage.text();
   assert(confirmationHtml.includes('no-referrer')&&confirmationHtml.includes('/auth/confirm/verify'));
+  const prefixedPage=await fetch(origin+'/auth/confirm?type=email&token_hash='+prefixedEmailToken);
+  const prefixedHtml=await prefixedPage.text();
+  assert.equal(prefixedPage.status,200);
+  assert(prefixedHtml.includes('action="/auth/confirm/verify"')&&prefixedHtml.includes('value="'+prefixedEmailToken+'"'),'a real-shaped PKCE hash must reach the confirmation form unchanged');
   assert.equal(emailVerifications,0,'opening or scanning the landing page must not consume the token');
-  const form=type=>new URLSearchParams({token_hash:emailToken,type,next:'https://evil.invalid'});
+  const form=(type,hash=emailToken)=>new URLSearchParams({token_hash:hash,type,next:'https://evil.invalid'});
   const foreignConfirm=await fetch(verificationUrl,{method:'POST',headers:{Origin:'https://evil.invalid'},body:form('email'),redirect:'manual'});
   assert.equal(foreignConfirm.status,403);assert.equal(emailVerifications,0);
   const invalidType=await fetch(verificationUrl,{method:'POST',headers:{Origin:origin},body:form('invite'),redirect:'manual'});
   assert.equal(invalidType.headers.get('location'),'/login?error=callback');assert.equal(emailVerifications,0);
+  for(const hash of ['pkce_','a'.repeat(257),'a'.repeat(32)+'/','a'.repeat(31)]){
+    const invalidHash=await fetch(verificationUrl,{method:'POST',headers:{Origin:origin},body:form('email',hash),redirect:'manual'});
+    assert.equal(invalidHash.headers.get('location'),'/login?error=callback');
+  }
+  assert.equal(emailVerifications,0,'malformed hashes must not reach authentication');
   assert.equal((await fetch(verificationUrl,{method:'POST',headers:{Origin:origin},body:new URLSearchParams({token_hash:'a'.repeat(5000),type:'email'}),redirect:'manual'})).status,413);
-  for(const [type,destination] of [['email','/'],['recovery','/reset-password']]) {
+  for(const hash of [emailToken,prefixedEmailToken])for(const [type,destination] of [['email','/'],['recovery','/reset-password']]) {
     // No cookies / PKCE verifier: the recipient may use a different browser.
-    const verifiedEmail=await fetch(verificationUrl,{method:'POST',headers:{Origin:origin},body:form(type),redirect:'manual'});
+    const verifiedEmail=await fetch(verificationUrl,{method:'POST',headers:{Origin:origin},body:form(type,hash),redirect:'manual'});
     assert.equal(verifiedEmail.status,303);assert.equal(verifiedEmail.headers.get('location'),destination);
     assert(verifiedEmail.headers.get('set-cookie')?.includes('sb-127-auth-token'));
     assert.equal(verifiedEmail.headers.get('referrer-policy'),'no-referrer');
   }
   const reused=await fetch(verificationUrl,{method:'POST',headers:{Origin:origin},body:form('email'),redirect:'manual'});
   assert.equal(reused.headers.get('location'),'/login?error=callback','used tokens cannot sign in twice');
+  const invalidUpstream=await fetch(verificationUrl,{method:'POST',headers:{Origin:origin},body:form('email','z'.repeat(64)),redirect:'manual'});
+  assert.equal(invalidUpstream.headers.get('location'),'/login?error=callback','only Supabase can authenticate a token that passes the shape check');
   const blocked=await fetch(origin+'/auth/signout',{method:'POST',headers:{...headers,Origin:'https://evil.invalid'},redirect:'manual'});
   assert.equal(blocked.status,403);
   const logout=await fetch(origin+'/auth/signout',{method:'POST',headers:{...headers,Origin:origin},redirect:'manual'});

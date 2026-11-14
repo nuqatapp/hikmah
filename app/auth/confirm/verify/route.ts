@@ -1,4 +1,5 @@
 import {serverAuth} from '@/lib/supabase/server';
+import {validEmailTokenHash} from '@/lib/supabase/email-token';
 
 export async function POST(request:Request) {
   const headers={'Cache-Control':'no-store','Referrer-Policy':'no-referrer'};
@@ -14,7 +15,7 @@ export async function POST(request:Request) {
     const body=await request.text();
     if(body.length>4096)return new Response('Request too large',{status:413,headers});
     const form=new URLSearchParams(body),token=form.get('token_hash')||'',type=form.get('type');
-    if(!/^[a-f0-9]{40,128}$/.test(token)||(type!=='email'&&type!=='recovery'))return fail();
+    if(!validEmailTokenHash(token)||(type!=='email'&&type!=='recovery'))return fail();
     const client=await serverAuth();
     if(!client)return fail();
     const {error}=await client.auth.verifyOtp({token_hash:token,type});
