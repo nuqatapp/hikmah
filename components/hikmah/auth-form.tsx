@@ -14,8 +14,8 @@ function authMessage(code:string,fallback:string,t:(en:string,ar:string)=>string
  if(code==='email_address_not_authorized')return t('Account email is not available right now. Continue as a guest or contact support.','بريد الحساب غير متاح حاليًا. تابع كضيف أو تواصل مع الدعم.');
  if(code==='email_not_confirmed')return t('Confirm your email before signing in.','أكد بريدك الإلكتروني قبل تسجيل الدخول.');
  if(code==='callback')return t('We could not complete sign-in from this link. If you already confirmed your email, sign in below with your password. Otherwise request a new link.','تعذر إكمال الدخول من هذا الرابط. إذا أكدت بريدك بالفعل، سجل الدخول أدناه بكلمة مرورك. وإلا فاطلب رابطًا جديدًا.');
- if(code==='confirm_sent')return t('Check your inbox to confirm your email. Open the link in this browser. If you already have an account, sign in or reset your password.','تحقق من بريدك لتأكيد الحساب وافتح الرابط في هذا المتصفح. إذا كان لديك حساب، سجل الدخول أو أعد تعيين كلمة المرور.');
- if(code==='reset_sent')return t('If an account exists, a password reset link has been sent. Open it in this browser.','إذا كان الحساب موجودًا، فستصلك رسالة لإعادة تعيين كلمة المرور. افتح الرابط في هذا المتصفح.');
+ if(code==='confirm_sent')return t('Check your inbox to confirm your email. If you already have an account, sign in or reset your password.','تحقق من بريدك لتأكيد الحساب. إذا كان لديك حساب، سجل الدخول أو أعد تعيين كلمة المرور.');
+ if(code==='reset_sent')return t('If an account exists, a password reset link has been sent.','إذا كان الحساب موجودًا، فستصلك رسالة لإعادة تعيين كلمة المرور.');
  if(code==='network')return t('Could not connect to sign-in. Check your connection and try again.','تعذر الاتصال بخدمة الدخول. تحقق من اتصالك وحاول مرة أخرى.');
  return fallback;
 }
@@ -27,7 +27,7 @@ export function AuthForm({configured, google, next, reset = false, callbackError
   const [mode, setMode] = useState<Mode>(reset ? 'reset' : initialMode);
   const [busy, setBusy] = useState(false);
   const [termsAccepted,setTermsAccepted]=useState(false),[legalCapacity,setLegalCapacity]=useState(false);
-  const [message, setMessage] = useState(callbackError ? 'This sign-in link expired or could not be verified. Request a new link and open it in the same browser.' : '');
+  const [message, setMessage] = useState(callbackError ? 'We could not complete sign-in from this link. If you already confirmed your email, sign in below with your password. Otherwise request a new link.' : '');
   const [failed, setFailed] = useState(callbackError);
   const [messageCode,setMessageCode]=useState(callbackError?'callback':'');
   const t = (en: string, ar: string) => arabic ? ar : en;
@@ -53,12 +53,12 @@ export function AuthForm({configured, google, next, reset = false, callbackError
         }});
         if (error) throw error;
         if (data.session) { window.location.assign(safeNext(next)); return; }
-        setMessage(t('Check your inbox to confirm your email. Open the link in this browser. If you already have an account, sign in or reset your password.', 'تحقق من بريدك لتأكيد الحساب وافتح الرابط في هذا المتصفح. إذا كان لديك حساب، سجل الدخول أو أعد تعيين كلمة المرور.'));
+        setMessage(t('Check your inbox to confirm your email. If you already have an account, sign in or reset your password.', 'تحقق من بريدك لتأكيد الحساب. إذا كان لديك حساب، سجل الدخول أو أعد تعيين كلمة المرور.'));
         setMessageCode('confirm_sent');
       } else if (mode === 'forgot') {
         const {error} = await client.auth.resetPasswordForEmail(email, {redirectTo: callback + '?next=/reset-password'});
         if (error) throw error;
-        setMessage(t('If an account exists, a password reset link has been sent. Open it in this browser.', 'إذا كان الحساب موجودًا، فستصلك رسالة لإعادة تعيين كلمة المرور. افتح الرابط في هذا المتصفح.'));
+        setMessage(t('If an account exists, a password reset link has been sent.', 'إذا كان الحساب موجودًا، فستصلك رسالة لإعادة تعيين كلمة المرور.'));
         setMessageCode('reset_sent');
       } else {
         if (password !== form.get('confirm')) throw new Error(t('Passwords do not match.', 'كلمتا المرور غير متطابقتين.'));
