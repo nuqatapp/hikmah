@@ -37,6 +37,14 @@ Netlify registered `privacy-maintenance` for `0 3 * * *` (06:00 Saudi time); thi
 
 The latest Supabase security advisor reports leaked-password protection disabled. This optional provider feature requires Pro or above; do not incur an upgrade without the owner's decision. The app requests at least 12 characters, which does not substitute for provider-enforced compromised-password checks. Custom SMTP remains necessary; a retry again hit the sending limit.
 
+### Final multiplayer and erasure verification
+
+Both approved QA emails were confirmed. Six real production multiplayer matches completed 30 rounds across every game/language combination. Identical puzzle, host/start, concurrent-answer, duplicate-submit, final-score and saved-balance checks passed. PostgreSQL verification found one correct attempt and one winner award for each of the 30 rounds. A QA assertion initially expected internal wallet IDs in the readable export; that assertion was corrected to the actual minimal export fields and independently checked against the database.
+
+Both disposable accounts were then erased through the live API. Auth/provider cleanup completed, old sessions became guests and the uploaded avatar returned 404. SQL found no remaining QA Auth/profile/consent/attempt/wallet/membership/host/winner identifiers; all 13 unlinked legacy profiles remained. The disclosed minimal completed-erasure status records remain for 30 days. Local QA passwords and cookies were cleared.
+
+The owner created a Resend account and opened the pending `auth.hikmahgame.com` domain. The displayed sending region is Tokyo. Its actual required DNS records are one DKIM TXT and two CNAMEs; use the current dashboard values, not a generic older SPF/MX example. DNS and SMTP/template activation remain pending. Do not overwrite root website or mail-forwarding records. The essential-storage notice now occupies normal page flow so it cannot cover sign-in errors, buttons or keyboard focus.
+
 ## Rights requests
 
 Check the support inbox regularly. Record receipt date, request type, due date, identity-verification method, outcome, necessary retention exception and completion date in a restricted register. Do not copy passwords, identity documents or unnecessary account data into tickets.
