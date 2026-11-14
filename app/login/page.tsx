@@ -15,5 +15,5 @@ export default async function LoginPage({searchParams}: {searchParams: Promise<R
       if (response.ok) google = Boolean((await response.json()).external?.google);
     } catch {}
   }
-  return <AuthForm configured={!!config} google={google} next={next} callbackError={params.error === 'callback'} />;
+  return <AuthForm configured={!!config} google={google} next={next} callbackError={params.error === 'callback'} initialMode={params.mode === 'signup' ? 'signup' : 'signin'} />;
 }

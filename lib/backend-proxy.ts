@@ -2,6 +2,7 @@ import 'server-only';
 import {siteIdentity} from './site-identity';
 
 export async function proxyBackend(request: Request, resource: 'game' | 'avatar') {
+  let stage='configuration';
   try {
     const url = new URL(request.url);
     if (request.method === 'POST') {
@@ -18,9 +19,13 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
         if (!allowed) return Response.json({error: 'Request origin is not allowed.'}, {status: 403});
       }
     }
-    const base = process.env.HIKMAH_BACKEND_URL;
-    const token = process.env.HIKMAH_BACKEND_TOKEN;
+    const base = process.env.HIKMAH_PREVIEW_BACKEND_URL || process.env.HIKMAH_BACKEND_URL;
+    // The preview can use its own private credential without changing Production.
+    const token = (process.env.HIKMAH_PREVIEW_BACKEND_URL
+      ? process.env.HIKMAH_PREVIEW_BACKEND_TOKEN || process.env.HIKMAH_BACKEND_TOKEN
+      : process.env.HIKMAH_BACKEND_TOKEN)?.trim();
     if (!base || !token) throw new Error('The backend connection is not configured.');
+    if(!/^[a-f0-9]{64}$/.test(token))throw Object.assign(new Error('The backend credential format is invalid.'),{name:'CredentialFormatError'});
     const target = new URL(base);
     target.search = url.search;
     target.searchParams.set('resource', resource);
@@ -29,11 +34,16 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
     if (Number(request.headers.get('content-length')) > limit) return Response.json({error: 'Request is too large.'}, {status: 413});
     const body = request.method === 'POST' ? await request.arrayBuffer() : undefined;
     if ((body?.byteLength || 0) > limit) return Response.json({error: 'Request is too large.'}, {status: 413});
+    stage='identity';
     const actor = await siteIdentity();
+    stage='upstream';
     const response = await fetch(target, {
       method: 'POST',
       headers: {
         'x-hikmah-server-token': token,
+        // Keep SQL-heavy execution beside the project's Frankfurt database.
+        // This removes the per-query transatlantic round trips from Netlify.
+        'x-region': process.env.HIKMAH_BACKEND_REGION || 'eu-central-1',
         'x-hikmah-actor': encodeURIComponent(JSON.stringify(actor)),
         'content-type': request.headers.get('content-type') || 'application/json',
       },
@@ -45,8 +55,16 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
       'Cache-Control': resource === 'avatar' && request.method === 'GET' && response.ok ? 'private, max-age=86400' : 'no-store',
       'X-Content-Type-Options': 'nosniff',
     });
+    const version=response.headers.get('x-hikmah-backend-version');
+    if(version)headers.set('X-Hikmah-Backend-Version',version);
+    if(!response.ok)headers.set('X-Hikmah-Error-Stage','backend');
     return new Response(response.body, {status: response.status, headers});
-  } catch {
-    return Response.json({error: 'The game service is unavailable. Your last saved progress is safe. Try again.'}, {status: 503});
+  } catch(error) {
+    // Stage and error class only: never log credentials, headers, player data or bodies.
+    console.error('Hikmah proxy failure',{stage,errorClass:error instanceof Error?error.name:'unknown'});
+    const cause=(error as {cause?:{code?:unknown}})?.cause?.code;
+    const headers=new Headers({'X-Hikmah-Error-Stage':stage,'X-Hikmah-Error-Type':error instanceof Error?error.name:'unknown'});
+    if(typeof cause==='string'&&/^[A-Z_]{1,60}$/.test(cause))headers.set('X-Hikmah-Error-Code',cause);
+    return Response.json({error: 'The game service is temporarily unavailable. Please try again.'}, {status: 503,headers});
   }
 }

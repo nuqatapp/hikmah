@@ -5,7 +5,7 @@ var __export = (target, all) => {
 };
 
 // backend/index.ts
-import { env as env2 } from "node:process";
+import { env as env3 } from "node:process";
 
 // db/raw.ts
 import postgres from "postgres";
@@ -34,9 +34,10 @@ var numeric = { to: 0, from: [20, 1700], serialize: (x) => String(x), parse: (x)
   if (!Number.isSafeInteger(value)) throw new Error("Database number is outside the supported range.");
   return value;
 } };
+var connection;
 function createConnection() {
   if (!env.SUPABASE_DB_URL) throw new Error("Database connection is not configured.");
-  return postgres(env.SUPABASE_DB_URL, { prepare: false, max: 1, idle_timeout: 10, connect_timeout: 10, types: { numeric } });
+  return connection ??= postgres(env.SUPABASE_DB_URL, { prepare: false, max: 2, idle_timeout: 20, connect_timeout: 10, max_lifetime: 300, types: { numeric } });
 }
 async function withDatabase(sql, work) {
   for (let attempt = 0; ; attempt++) {
@@ -65,6 +66,7 @@ async function withDatabase(sql, work) {
         }
       }
       if (!["40001", "40P01"].includes(error2?.code) || attempt >= 3) throw error2;
+      await new Promise((resolve) => setTimeout(resolve, 25 * 2 ** attempt + Math.floor(Math.random() * 25)));
     }
   }
 }
@@ -106,25 +108,38 @@ function bucket() {
   const headers = { Authorization: "Bearer " + key, apikey: key };
   const url = (path) => base + "/storage/v1/object/hikmah-avatars/" + path;
   const remove = async (path) => {
-    const response = await fetch(base + "/storage/v1/object/hikmah-avatars", { method: "DELETE", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ prefixes: [path] }) });
+    const response = await fetch(base + "/storage/v1/object/hikmah-avatars", { method: "DELETE", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ prefixes: [path] }), signal: AbortSignal.timeout(1e4) });
     if (!response.ok && response.status !== 404) throw new Error("Avatar deletion failed.");
   };
+  const queue = (path) => database().prepare("INSERT OR IGNORE INTO storage_deletion_jobs(path,requested_at) VALUES(?,?)").bind(path, Date.now()).run();
   return {
     async get(path) {
-      const response = await fetch(url(path), { headers });
+      const response = await fetch(url(path), { headers, signal: AbortSignal.timeout(1e4) });
       if (response.status === 404 || response.status === 400) return null;
       if (!response.ok) throw new Error("Avatar download failed.");
       return { body: response.body, httpMetadata: { contentType: response.headers.get("content-type") || "image/png" } };
     },
     async put(path, bytes, options) {
-      const response = await fetch(url(path), { method: "POST", headers: { ...headers, "Content-Type": options.httpMetadata.contentType }, body: bytes });
+      const response = await fetch(url(path), { method: "POST", headers: { ...headers, "Content-Type": options.httpMetadata.contentType }, body: bytes, signal: AbortSignal.timeout(1e4) });
       if (!response.ok) throw new Error("Avatar upload failed.");
-      effects.getStore()?.rollback.push(() => remove(path));
+      effects.getStore()?.rollback.push(async () => {
+        try {
+          await remove(path);
+        } catch (error2) {
+          await withDatabase(createConnection(), () => queue(path));
+          throw error2;
+        }
+      });
     },
     async delete(path) {
       const pending = effects.getStore();
-      if (pending) pending.commit.push(() => remove(path));
-      else await remove(path);
+      if (pending) {
+        await queue(path);
+        pending.commit.push(async () => {
+          await remove(path);
+          await withDatabase(createConnection(), () => database().prepare("DELETE FROM storage_deletion_jobs WHERE path=?").bind(path).run());
+        });
+      } else await remove(path);
     }
   };
 }
@@ -1567,6 +1582,14 @@ async function init() {
 }
 async function ensureProfile(u) {
   if (!u.signed) return null;
+  const existing = await profile(u.id);
+  if (existing) {
+    if (u.authUserId && !existing.auth_user_id) {
+      await run("UPDATE profiles SET auth_user_id=? WHERE id=? AND auth_user_id IS NULL", u.authUserId, u.id);
+      existing.auth_user_id = u.authUserId;
+    }
+    return existing;
+  }
   await batch([
     ["INSERT OR IGNORE INTO profiles(id,name,created_at) VALUES(?,?,?)", [u.id, u.name, now()]],
     ["INSERT OR IGNORE INTO wallet(id,user,amount,reason,created_at) VALUES(?,?,20,'Welcome',?)", ["welcome:" + u.id, u.id, now()]]
@@ -1579,9 +1602,10 @@ async function isAdmin(id) {
   return a?.value === id;
 }
 async function profile(id) {
-  const p = await one("SELECT * FROM profiles WHERE id=?", id);
+  const p = await one("SELECT p.*,(SELECT COALESCE(SUM(w.amount),0) FROM wallet w WHERE w.user=p.id) AS balance,EXISTS(SELECT 1 FROM site_settings s WHERE s.key='admin_user' AND s.value=p.id) AS is_admin FROM profiles p WHERE p.id=?", id);
   if (!p) return null;
-  return { ...p, balance: (await one("SELECT COALESCE(SUM(amount),0) AS balance FROM wallet WHERE user=?", id)).balance, isAdmin: await isAdmin(id) };
+  const { is_admin, ...fields } = p;
+  return { ...fields, isAdmin: !!is_admin };
 }
 async function requireAccount() {
   const u = await identity();
@@ -1646,8 +1670,8 @@ async function leaveRoom(id, user) {
 async function advance(id, user, manual = false) {
   let r = await memberRoom(id, user);
   const t = now();
-  await run("UPDATE members SET last_seen=? WHERE room=? AND user=?", t, id, user);
-  await run("UPDATE rooms SET host=? WHERE id=? AND host!=? AND EXISTS(SELECT 1 FROM members WHERE room=? AND user=rooms.host AND (last_seen<? OR left_at IS NOT NULL))", user, id, user, id, t - 45e3);
+  if (r.mode === "multi") await run("UPDATE members SET last_seen=? WHERE room=? AND user=? AND last_seen<?", t, id, user, t - 5e3);
+  if (r.mode === "multi") await run("UPDATE rooms SET host=? WHERE id=? AND host!=? AND EXISTS(SELECT 1 FROM members WHERE room=? AND user=rooms.host AND (last_seen<? OR left_at IS NOT NULL))", user, id, user, id, t - 45e3);
   if (r.status !== "active") return;
   let rd = await one("SELECT * FROM rounds WHERE room=? AND number=?", id, r.round);
   if (!rd?.started_at) return;
@@ -1715,6 +1739,78 @@ async function dashboard(u) {
   return { profile: p, signedIn: u.signed, stats: u.signed ? await one("SELECT COUNT(*) AS answered,COALESCE(SUM(correct),0) AS correct FROM attempts WHERE user=?", u.id) : null, active: u.signed ? await many("SELECT r.id,r.kind,r.mode,r.code FROM rooms r JOIN members m ON m.room=r.id WHERE m.user=? AND m.left_at IS NULL AND r.status IN ('waiting','active') ORDER BY r.created_at DESC", u.id) : [], counts: await many("SELECT kind,locale,COUNT(*) AS n FROM content WHERE active=1 GROUP BY kind,locale") };
 }
 
+// lib/policy.ts
+var ACCOUNT_POLICY_VERSION = "2026-11-13";
+function validateAccountConsent(value) {
+  if (value.version !== ACCOUNT_POLICY_VERSION || value.accepted !== true || value.legalCapacity !== true)
+    throw new Error("Read and accept the current terms and confirm legal capacity.");
+  if (value.capacity !== "self" && value.capacity !== "guardian") throw new Error("Choose who manages this account.");
+  if (value.capacity === "guardian" && (value.childDataConsent !== true || !["parent", "legal_guardian"].includes(String(value.relationship))))
+    throw new Error("A legal guardian must confirm their authority and authorise the child\u2019s account data.");
+  return { capacity: value.capacity, relationship: value.capacity === "guardian" ? String(value.relationship) : null };
+}
+
+// lib/game/privacy.ts
+function verifiedAccount(actor) {
+  if (!actor.signed || !actor.authUserId) throw new GameError("Sign in with a verified account to continue.", 401);
+  return actor.authUserId;
+}
+async function accountConsent(actor) {
+  if (!actor.signed) return null;
+  if (!actor.authUserId) return { accepted: false, version: ACCOUNT_POLICY_VERSION };
+  const record = await one("SELECT capacity,relationship,accepted_at,terms_version FROM account_consents WHERE auth_user_id=? AND terms_version=?", actor.authUserId, ACCOUNT_POLICY_VERSION);
+  return { accepted: !!record, version: ACCOUNT_POLICY_VERSION, ...record };
+}
+async function requireAccountConsent(actor) {
+  verifiedAccount(actor);
+  if (!(await accountConsent(actor))?.accepted) throw new GameError("Review the account terms and guardian choices before playing with an account.", 403);
+}
+async function acceptAccountConsent(value) {
+  const actor = await identity(), authId = verifiedAccount(actor);
+  let consent;
+  try {
+    consent = validateAccountConsent(value);
+  } catch (e) {
+    throw new GameError(e.message);
+  }
+  await run("INSERT OR IGNORE INTO account_consents(auth_user_id,terms_version,capacity,relationship,accepted_at,verification_method) VALUES(?,?,?,?,?,?)", authId, ACCOUNT_POLICY_VERSION, consent.capacity, consent.relationship, Date.now(), "verified_email_and_attestation");
+  return accountConsent(actor);
+}
+async function exportAccountData() {
+  const actor = await identity(), authId = verifiedAccount(actor);
+  return {
+    exportedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    accountId: authId,
+    profile: await profile(actor.id),
+    consents: await many("SELECT terms_version,capacity,relationship,accepted_at,verification_method FROM account_consents WHERE auth_user_id=?", authId),
+    attempts: await many("SELECT round,correct,answer,elapsed,created_at FROM attempts WHERE user=? ORDER BY created_at", actor.id),
+    wallet: await many("SELECT amount,reason,created_at FROM wallet WHERE user=? ORDER BY created_at", actor.id),
+    reports: await many("SELECT content_id,message,status,created_at FROM reports WHERE user=? ORDER BY created_at", actor.id),
+    games: await many("SELECT r.id,r.kind,r.locale,r.mode,r.status,r.total,r.created_at FROM rooms r JOIN members m ON m.room=r.id WHERE m.user=? ORDER BY r.created_at", actor.id)
+  };
+}
+async function requestAccountErasure(confirm) {
+  const actor = await identity(), authId = verifiedAccount(actor);
+  if (confirm !== "DELETE") throw new GameError("Type DELETE to confirm.");
+  const p = await profile(actor.id);
+  await run("INSERT OR IGNORE INTO account_erasure_jobs(auth_user_id,requested_at,status,avatar_path) VALUES(?,?,?,?)", authId, Date.now(), "pending", p?.avatar || null);
+  const rooms = await many("SELECT r.id FROM rooms r JOIN members m ON m.room=r.id WHERE m.user=? AND m.left_at IS NULL", actor.id);
+  for (const room of rooms) await leaveRoom(room.id, actor.id);
+  const anonymousHost = "deleted_" + crypto.randomUUID();
+  await batch([
+    ["DELETE FROM attempts WHERE user=?", [actor.id]],
+    ["DELETE FROM wallet WHERE user=?", [actor.id]],
+    ["DELETE FROM reports WHERE user=?", [actor.id]],
+    ["UPDATE rounds SET winner=NULL WHERE winner=?", [actor.id]],
+    ["UPDATE rooms SET host=? WHERE host=?", [anonymousHost, actor.id]],
+    ["DELETE FROM members WHERE user=?", [actor.id]],
+    ["DELETE FROM account_consents WHERE auth_user_id=?", [authId]],
+    ["DELETE FROM site_settings WHERE key='admin_user' AND value=?", [actor.id]],
+    ["DELETE FROM profiles WHERE id=?", [actor.id]]
+  ]);
+  return { erasureRequested: true };
+}
+
 // backend/game-route.ts
 var dynamic = "force-dynamic";
 function json(data, status = 200) {
@@ -1729,8 +1825,12 @@ async function GET(req) {
     await init();
     const q = req.nextUrl.searchParams, action = q.get("action") || "dashboard";
     const u = await identity();
-    if (u.signed) await requireAccount();
-    if (action === "dashboard") return json(await dashboard(u));
+    if (action === "export") return json(await exportAccountData());
+    if (action === "dashboard") return json({ ...await dashboard(u), consent: await accountConsent(u) });
+    if (u.signed) {
+      await requireAccount();
+      await requireAccountConsent(u);
+    }
     if (action === "room") return json(await roomState(q.get("id") || "", u));
     if (action === "lobby") {
       await requireAccount();
@@ -1762,7 +1862,10 @@ async function POST(req) {
     if (!b || typeof b !== "object" || typeof b.action !== "string") throw new GameError("Invalid request.");
     await init();
     const u = await identity();
-    if (u.signed) await requireAccount();
+    if (u.signed && !["delete", "consent"].includes(b.action)) {
+      await requireAccount();
+      await requireAccountConsent(u);
+    }
     switch (b.action) {
       case "create":
         return json(await createRoom(b.kind, b.locale, b.mode === "multi" ? "multi" : "solo", u));
@@ -1770,24 +1873,24 @@ async function POST(req) {
         return json(await joinRoom(String(b.code || ""), u));
       case "start":
         await startRoom(String(b.id), u.id);
-        break;
+        return json({ ok: true, state: await roomState(String(b.id), u) });
       case "leave":
         await leaveRoom(String(b.id), u.id);
         break;
       case "answer":
-        return json(await submit(String(b.id), String(b.roundId), b.answer, u));
+        return json({ ...await submit(String(b.id), String(b.roundId), b.answer, u), state: await roomState(String(b.id), u) });
       case "skip":
-        return json(await submit(String(b.id), String(b.roundId), null, u, true));
+        return json({ ...await submit(String(b.id), String(b.roundId), null, u, true), state: await roomState(String(b.id), u) });
       case "next":
         await advance(String(b.id), u.id, true);
-        break;
+        return json({ ok: true, state: await roomState(String(b.id), u) });
       case "profile": {
         const a = await requireAccount();
         const name = String(b.name || "").trim(), username = String(b.username || "").trim().toLowerCase();
         if (name.length < 2 || name.length > 40) throw new GameError("Display name must be 2 to 40 characters.");
         if (username && !/^[a-z0-9_]{3,24}$/.test(username)) throw new GameError("Username needs 3 to 24 letters, numbers or underscores.");
         if (username && await one("SELECT id FROM profiles WHERE username=? AND id!=?", username, a.id)) throw new GameError("Username already used.");
-        await run("UPDATE profiles SET name=?,username=?,country=?,city=?,age_group=?,locale=? WHERE id=?", name, username || null, String(b.country || "").slice(0, 80), String(b.city || "").slice(0, 80), String(b.age_group || "").slice(0, 30), b.locale === "ar" ? "ar" : "en", a.id);
+        await run("UPDATE profiles SET name=?,username=?,country='',city='',age_group='',locale=? WHERE id=?", name, username || null, b.locale === "ar" ? "ar" : "en", a.id);
         return json({ profile: await profile(a.id) });
       }
       case "report": {
@@ -1828,16 +1931,10 @@ async function POST(req) {
         if (!["open", "reviewing", "resolved", "rejected"].includes(b.status)) throw new GameError("Invalid report status.");
         await run("UPDATE reports SET status=? WHERE id=?", b.status, String(b.id));
         break;
-      case "delete": {
-        const a = await requireAccount();
-        if (b.confirm !== "DELETE") throw new GameError("Type DELETE to confirm.");
-        const p = await profile(a.id);
-        if (p?.avatar) await bucket().delete(p.avatar);
-        const rooms = await many("SELECT r.id FROM rooms r JOIN members m ON m.room=r.id WHERE m.user=? AND m.left_at IS NULL", a.id);
-        for (const r of rooms) await leaveRoom(r.id, a.id);
-        await batch([["DELETE FROM attempts WHERE user=?", [a.id]], ["DELETE FROM wallet WHERE user=?", [a.id]], ["DELETE FROM reports WHERE user=?", [a.id]], ["UPDATE rounds SET winner=NULL WHERE winner=?", [a.id]], ["DELETE FROM members WHERE user=?", [a.id]], ["DELETE FROM profiles WHERE id=?", [a.id]]]);
-        break;
-      }
+      case "consent":
+        return json({ consent: await acceptAccountConsent(b) });
+      case "delete":
+        return json(await requestAccountErasure(b.confirm));
       default:
         throw new GameError("Unknown action.", 404);
     }
@@ -1859,6 +1956,7 @@ async function GET2(req) {
   try {
     const key = req.nextUrl.searchParams.get("key");
     if (!key || !/^avatars\/[a-f0-9-]+\.(png|jpg|webp)$/.test(key)) return new Response("Not found", { status: 404 });
+    if (!await one("SELECT id FROM profiles WHERE avatar=?", key)) return new Response("Not found", { status: 404 });
     const file = await bucket().get(key);
     if (!file) return new Response("Not found", { status: 404 });
     return new Response(file.body, { headers: { "Content-Type": file.httpMetadata?.contentType || "image/png", "Cache-Control": "public, max-age=86400", "X-Content-Type-Options": "nosniff" } });
@@ -1871,6 +1969,7 @@ async function POST2(req) {
     const origin = req.headers.get("origin");
     if (origin && origin !== req.nextUrl.origin) throw new GameError("Invalid request.", 403);
     const u = await requireAccount();
+    await requireAccountConsent(u);
     if (Number(req.headers.get("content-length")) > 53e5) throw new GameError("Maximum image size is 5 MB.");
     const data = await req.formData(), f = data.get("avatar");
     if (!(f instanceof File) || f.size > 5 * 1024 * 1024) throw new GameError("Choose an image up to 5 MB.");
@@ -1898,7 +1997,52 @@ async function POST2(req) {
   }
 }
 
+// backend/privacy-jobs.ts
+import { env as env2 } from "node:process";
+async function finishErasure(sql, authId) {
+  const job = await withDatabase(sql, () => one("SELECT * FROM account_erasure_jobs WHERE auth_user_id=?", authId));
+  if (!job || job.status === "completed") return true;
+  let stage = "storage_cleanup";
+  try {
+    if (job.avatar_path) await bucket().delete(job.avatar_path);
+    stage = "auth_cleanup";
+    const base = env2.SUPABASE_URL, key = env2.SUPABASE_SERVICE_ROLE_KEY;
+    if (!base || !key) throw new Error("Auth cleanup unavailable.");
+    const response = await fetch(base + "/auth/v1/admin/users/" + encodeURIComponent(authId), { method: "DELETE", headers: { Authorization: "Bearer " + key, apikey: key, "Content-Type": "application/json" }, body: JSON.stringify({ should_soft_delete: false }), signal: AbortSignal.timeout(1e4) });
+    if (!response.ok && response.status !== 404) throw new Error("Auth cleanup failed.");
+    await withDatabase(sql, () => run("UPDATE account_erasure_jobs SET status='completed',completed_at=?,avatar_path=NULL,last_error_code=NULL,attempts=attempts+1 WHERE auth_user_id=?", Date.now(), authId));
+    return true;
+  } catch {
+    await withDatabase(sql, () => run("UPDATE account_erasure_jobs SET attempts=attempts+1,last_error_code=? WHERE auth_user_id=?", stage, authId));
+    return false;
+  }
+}
+async function runPrivacyMaintenance(sql) {
+  const files = await withDatabase(sql, () => many("SELECT path FROM storage_deletion_jobs ORDER BY requested_at LIMIT 20"));
+  let filesCompleted = 0;
+  for (const file of files) {
+    try {
+      await bucket().delete(file.path);
+      await withDatabase(sql, () => run("DELETE FROM storage_deletion_jobs WHERE path=?", file.path));
+      filesCompleted++;
+    } catch {
+      await withDatabase(sql, () => run("UPDATE storage_deletion_jobs SET attempts=attempts+1 WHERE path=?", file.path));
+    }
+  }
+  const jobs = await withDatabase(sql, () => many("SELECT auth_user_id FROM account_erasure_jobs WHERE status='pending' ORDER BY requested_at LIMIT 20"));
+  let completed = 0;
+  for (const job of jobs) if (await finishErasure(sql, job.auth_user_id)) completed++;
+  const cutoff = Date.now() - 30 * 864e5;
+  await withDatabase(sql, async () => {
+    await run("DELETE FROM rooms WHERE substr(host,1,2)='g_' AND mode='solo' AND updated_at<? AND NOT EXISTS(SELECT 1 FROM rounds r JOIN attempts a ON a.round=r.id WHERE r.room=rooms.id AND a.created_at>=?)", cutoff, cutoff);
+    await run("DELETE FROM attempts WHERE substr(user,1,2)='g_' AND created_at<?", cutoff);
+    await run("DELETE FROM account_erasure_jobs WHERE status='completed' AND completed_at<?", cutoff);
+  });
+  return { ok: true, erasureJobsChecked: jobs.length, erasureJobsCompleted: completed, storageJobsChecked: files.length, storageJobsCompleted: filesCompleted };
+}
+
 // backend/index.ts
+var BACKEND_VERSION = "2026-11-14-privacy-2";
 function validActor(value) {
   return value && typeof value.id === "string" && value.id.length > 0 && value.id.length <= 200 && typeof value.name === "string" && value.name.length <= 200 && typeof value.signed === "boolean" && (value.signed ? !value.id.startsWith("g_") : /^g_[a-f0-9-]{36}$/.test(value.id)) && (value.authUserId === void 0 || value.signed && typeof value.authUserId === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value.authUserId) && value.id === "sb_" + value.authUserId);
 }
@@ -1911,6 +2055,25 @@ async function handleBackend(request) {
     const hash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token))), (b) => b.toString(16).padStart(2, "0")).join("");
     const accepted = await sql`SELECT 1 FROM hikmah.server_credentials WHERE token_hash = ${hash} AND revoked_at IS NULL`;
     if (!accepted.length) return Response.json({ error: "Unauthorized." }, { status: 401 });
+    const url = new URL(request.url);
+    const resource = url.searchParams.get("resource");
+    const method = url.searchParams.get("method");
+    if (resource === "maintenance" && method === "POST") return Response.json(await runPrivacyMaintenance(sql));
+    if (!["game", "avatar"].includes(resource || "") || !["GET", "POST"].includes(method || "")) return Response.json({ error: "Unknown request." }, { status: 404 });
+    const body = method === "POST" ? await request.arrayBuffer() : void 0;
+    const limit = resource === "avatar" ? 53e5 : 4e4;
+    if ((body?.byteLength || 0) > limit) return Response.json({ error: "Request is too large." }, { status: 413 });
+    let operation = "";
+    let confirmation;
+    if (resource === "game" && body) {
+      try {
+        const payload = JSON.parse(new TextDecoder().decode(body));
+        operation = payload.action;
+        confirmation = payload.confirm;
+      } catch {
+        return Response.json({ error: "Invalid request." }, { status: 400 });
+      }
+    }
     const actorHeader = request.headers.get("x-hikmah-actor");
     let actor;
     try {
@@ -1920,20 +2083,20 @@ async function handleBackend(request) {
     }
     if (!validActor(actor)) return Response.json({ error: "Invalid identity." }, { status: 400 });
     if (actor.authUserId) {
-      const linked = await sql`SELECT id FROM hikmah.profiles WHERE auth_user_id = ${actor.authUserId}`;
-      if (linked.length) actor.id = linked[0].id;
+      const [linked] = await sql`SELECT (SELECT id FROM hikmah.profiles WHERE auth_user_id=${actor.authUserId}) AS profile_id,(SELECT status FROM hikmah.account_erasure_jobs WHERE auth_user_id=${actor.authUserId}) AS erasure_status`;
+      if (linked?.erasure_status) {
+        if (operation === "delete" && confirmation === "DELETE") {
+          const completed = await finishErasure(sql, actor.authUserId);
+          return Response.json({ erasureRequested: true, completed }, { status: completed ? 200 : 202 });
+        }
+        return Response.json({ error: "Account erasure has been requested. Sign out; contact support if you need help." }, { status: 403 });
+      }
+      if (linked?.profile_id) actor.id = linked.profile_id;
     }
-    const url = new URL(request.url);
-    const resource = url.searchParams.get("resource");
-    const method = url.searchParams.get("method");
-    if (!["game", "avatar"].includes(resource || "") || !["GET", "POST"].includes(method || "")) return Response.json({ error: "Unknown request." }, { status: 404 });
     url.searchParams.delete("resource");
     url.searchParams.delete("method");
-    const body = method === "POST" ? await request.arrayBuffer() : void 0;
-    const limit = resource === "avatar" ? 53e5 : 4e4;
-    if ((body?.byteLength || 0) > limit) return Response.json({ error: "Request is too large." }, { status: 413 });
     const handler = (resource === "game" ? game_route_exports : avatar_route_exports)[method];
-    return await actorContext.run(actor, () => withDatabase(sql, () => {
+    const response = await actorContext.run(actor, () => withDatabase(sql, () => {
       const headers = new Headers();
       if (body) {
         headers.set("content-type", request.headers.get("content-type") || "application/json");
@@ -1941,14 +2104,19 @@ async function handleBackend(request) {
       }
       return handler(new NextRequest(url, { method, headers, body }));
     }));
+    if (operation === "delete" && response.ok && actor.authUserId) {
+      const completed = await finishErasure(sql, actor.authUserId);
+      return Response.json({ erasureRequested: true, completed }, { status: completed ? 200 : 202, headers: { "X-Hikmah-Backend-Version": BACKEND_VERSION } });
+    }
+    response.headers.set("X-Hikmah-Backend-Version", BACKEND_VERSION);
+    return response;
   } catch (error2) {
     console.error("Hikmah backend failure", { code: error2?.code || "backend_error", message: error2?.message });
     return Response.json({ error: "The game service is unavailable. Your last saved progress is safe. Try again." }, { status: 503 });
-  } finally {
-    await sql.end({ timeout: 1 });
   }
 }
-if (typeof Deno !== "undefined" && env2.SUPABASE_URL) Deno.serve(handleBackend);
+if (typeof Deno !== "undefined" && env3.SUPABASE_URL) Deno.serve(handleBackend);
 export {
+  BACKEND_VERSION,
   handleBackend
 };

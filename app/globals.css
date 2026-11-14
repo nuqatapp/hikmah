@@ -8,3 +8,28 @@
 @media(max-width:980px){.shell{padding:0 28px}.nav{gap:18px}.topbar{flex-wrap:wrap;gap:10px;padding-top:18px}.nav{order:3;width:100%;justify-content:center}.nav a{padding:12px 0}.main{padding-top:32px}.quiet-note{display:none}.games{gap:12px}.card-body{padding:19px}.room-layout{grid-template-columns:1fr}.room-layout aside{order:-1}.room-layout aside .player-row{display:inline-flex;margin-inline-end:18px}.below-grid{gap:14px}.card-body h2{font-size:25px}}
 @media(max-width:650px){.shell{padding:0 20px}.brand-name{font-size:25px}.brand-name small{font-size:14px}.brand img{width:36px;height:36px}.top-actions{gap:6px}.balance{padding:5px 8px}.top-actions .account-label{display:none}.nav{justify-content:space-between;gap:10px}.nav a{font-size:13px}.intro{margin-bottom:24px}h1{font-size:2.8rem}.intro p{font-size:14px}.modebar{align-items:flex-start;flex-direction:column}.language-pick{align-self:flex-end}.games{grid-template-columns:1fr;gap:18px}.game-art{height:150px}.card-body p{min-height:0}.card-body{padding:24px}.below-grid,.form-grid{grid-template-columns:1fr}.main{padding-bottom:35px}.footer{align-items:flex-start;flex-direction:column;justify-content:center;gap:5px;padding:20px 0}.panel,.puzzle-panel{padding:22px 16px}.tile{width:36px;height:48px;font-size:20px}.word-group{margin:4px;gap:3px}.clue-row{flex-wrap:wrap}.stats-grid{gap:8px}.stat{padding:18px 10px}.stat strong{font-size:28px}.stat span{font-size:12px}.section-head h1{font-size:2rem}.segmented button{padding:8px 18px}.game-status{font-size:14px}.room-code{font-size:24px}.hide-mobile{display:none}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* Text and input boundaries remain legible in both appearances. */
+:root{--input:#506562}
+:root.dark{--input:#bbc5bc}
+.brand-name small,.card-body .eyebrow{opacity:1;color:var(--muted-foreground)}
+.tile,.keyboard button{border-color:var(--muted-foreground)}
+.keyboard button[aria-disabled=true]{cursor:not-allowed}
+.footer{flex-wrap:wrap;padding-block:20px}
+.legal-links{display:flex;gap:10px 18px;flex-wrap:wrap;font-size:13px}
+.legal-links a,.legal-document a,.storage-notice a{text-decoration:underline;text-underline-offset:3px}
+.legal-header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding-block:24px;border-bottom:1px solid var(--border)}
+.legal-document{max-width:800px;margin:auto;display:grid;gap:28px}
+.legal-document h2{font-size:1.5rem}
+.legal-document p{overflow-wrap:anywhere}
+.storage-notice{position:fixed;bottom:12px;inset-inline:12px;z-index:40;max-width:800px;margin-inline:auto;display:flex;align-items:center;gap:16px;justify-content:space-between;padding:16px 20px;background:var(--card);color:var(--foreground);border:1px solid var(--muted-foreground);border-radius:16px;box-shadow:0 4px 24px #0002;font-size:14px}
+.storage-notice .btn{flex-shrink:0}
+.skip-link{position:fixed;top:10px;inset-inline-start:10px;transform:translateY(-200%);z-index:100;background:var(--primary);color:var(--primary-foreground);padding:12px 20px;border-radius:12px}
+.skip-link:focus{transform:translateY(0)}
+.check-field{display:flex;align-items:flex-start;gap:12px;font-size:14px}
+.check-field input{width:20px;height:20px;flex-shrink:0;margin-top:3px;accent-color:var(--primary)}
+.check-field a{text-decoration:underline;text-underline-offset:3px}
+.field select{background:var(--background);color:var(--foreground);border:1px solid var(--input);border-radius:10px;padding:11px 13px;min-height:44px;font-size:16px}
+fieldset{border:1px solid var(--input);border-radius:12px;padding:16px;min-width:0}
+legend{padding-inline:6px}
+@media(max-width:650px){.storage-notice{align-items:flex-start;flex-direction:column;gap:10px;padding:14px}.storage-notice .btn{align-self:flex-end}}

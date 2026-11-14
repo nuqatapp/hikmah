@@ -1,4 +1,5 @@
 import {serverAuth} from '@/lib/supabase/server';
+import {cookies} from 'next/headers';
 export async function POST(request: Request) {
   const origin = request.headers.get('origin');
   const host = request.headers.get('host') || new URL(request.url).host;
@@ -8,7 +9,10 @@ export async function POST(request: Request) {
   const client = await serverAuth();
   if (client) {
     const {error} = await client.auth.signOut({scope: 'local'});
-    if (error) return Response.json({error: 'Sign-out failed. Please retry.'}, {status: 503});
+    if (error && ![401,403,404].includes(error.status||0)) return Response.json({error: 'Sign-out failed. Please retry.'}, {status: 503});
   }
+  // An already-erased Auth account can no longer log out upstream; clear its local session.
+  const jar=await cookies();
+  for(const cookie of jar.getAll())if(/^sb-.*auth-token(?:\.\d+)?$/.test(cookie.name))jar.delete(cookie.name);
   return new Response(null, {status: 303, headers: {Location: '/', 'Cache-Control': 'no-store'}});
 }
