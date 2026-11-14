@@ -23,6 +23,20 @@ The live QA on 14 November 2026 found a confirmation link returning to `localhos
 
 The operator confirmed receipt of both QA confirmation and password-reset emails. A further signup returned `over_email_send_rate_limit`. Verify custom SMTP configuration and the project's configured limits before public launch; do not disable email confirmation to work around the limit. Use an authenticated sender on the operator's domain, retain applicable processor/transfer evidence, and test the complete confirmation/reset return path after saving URL settings. No email password or SMTP secret belongs in chat or source code.
 
+### Cross-browser email templates
+
+After deploying the `/auth/confirm` landing page, install `supabase/templates/confirmation.html` as the hosted Confirm signup email and `supabase/templates/recovery.html` as Reset password. Suggested bilingual subjects: `Confirm your Hikmah email / تأكيد بريد حكمة` and `Reset your Hikmah password / تغيير كلمة مرور حكمة`. These files are not applied to the hosted project automatically by a frontend deployment.
+
+The templates use Site URL and TokenHash. The recipient confirms the action with an explicit POST before `verifyOtp` consumes the token. No originating-browser PKCE cookie is required. A simple GET from an email scanner does not confirm or sign in; the verification route checks Origin, token format, allowed types and size, creates the session through Supabase and uses fixed local destinations. Keep link tracking disabled and test both templates after saving. Existing PKCE/OAuth callbacks remain supported for older messages. A QA email confirmed in a different browser can already be verified even if its old PKCE callback fails; check identity state before sending another email.
+
+### Verified production release, 14 November 2026
+
+PR 1 was merged as `100075aa04977acbd4bd964eecfa7d1e25822118`. Production Netlify deploy `6af838813e093aa947978cae` published at 13:32 Saudi time; the matching production `hikmah-api` became version 4 with the same compiled candidate digest and response version `2026-11-14-privacy-2`. Sixty production solo rounds passed across all three games and both languages. The live security suite and signed-in account consent/reward/export/avatar checks passed. The owner confirmed the newest QA email; password sign-in verified the account after its cross-browser PKCE callback failed. Real two-account multiplayer remains pending email capacity.
+
+Netlify registered `privacy-maintenance` for `0 3 * * *` (06:00 Saudi time); this proves registration, not a completed scheduled run. Production proxy and scheduled function both have the existing Functions-scoped backend URL/token. Deployment metadata reports Netlify functions in `us-east-2`; Supabase is Frankfurt. The Supabase organization is currently Free, and the owner reports no outside backups/exports. Current plan documentation provides no automatic daily backups for Free and lists one-day API/database log retention; confirm actual dashboard changes before relying on these defaults. Do not describe backups as guaranteed. Preserve all 13 unlinked legacy profiles.
+
+The latest Supabase security advisor reports leaked-password protection disabled. This optional provider feature requires Pro or above; do not incur an upgrade without the owner's decision. The app requests at least 12 characters, which does not substitute for provider-enforced compromised-password checks. Custom SMTP remains necessary; a retry again hit the sending limit.
+
 ## Rights requests
 
 Check the support inbox regularly. Record receipt date, request type, due date, identity-verification method, outcome, necessary retention exception and completion date in a restricted register. Do not copy passwords, identity documents or unnecessary account data into tickets.

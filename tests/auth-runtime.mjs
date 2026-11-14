@@ -12,6 +12,8 @@ const session = {access_token:token, refresh_token:'local-refresh', expires_at:e
 const cookie = 'sb-127-auth-token=base64-' + encode(session);
 let allowed = true;
 let deletedAccount=false;
+let emailVerifications=0;
+const consumedEmailTokens=new Set();
 const mock = createServer(async (request,response) => {
   response.setHeader('Content-Type','application/json');
   if(request.url.startsWith('/auth/v1/user')) {
@@ -19,6 +21,13 @@ const mock = createServer(async (request,response) => {
     response.end(JSON.stringify(user));return;
   }
   if(request.url.startsWith('/auth/v1/settings')) {response.end(JSON.stringify({external:{google:true,email:true}}));return;}
+  if(request.url==='/auth/v1/verify') {
+    emailVerifications++;
+    let body='';for await(const chunk of request)body+=chunk;
+    const input=JSON.parse(body),key=input.type+':'+input.token_hash;
+    if(input.token_hash!=='a'.repeat(64)||consumedEmailTokens.has(key)){response.statusCode=400;response.end('{"message":"Invalid or expired token"}');return;}
+    consumedEmailTokens.add(key);response.end(JSON.stringify(session));return;
+  }
   if(request.url.startsWith('/auth/v1/logout')) {response.statusCode=deletedAccount?404:200;response.end(deletedAccount?'{"message":"User not found"}':'{}');return;}
   if(request.url.startsWith('/auth/v1/token')) {
     let body='';for await(const chunk of request)body+=chunk;
@@ -63,6 +72,27 @@ try {
   }
   const missing=await fetch(origin+'/auth/callback?next=/admin',{redirect:'manual'});
   assert.equal(missing.headers.get('location'),'/login?error=callback');
+  const emailToken='a'.repeat(64),verificationUrl=origin+'/auth/confirm/verify';
+  const confirmPage=await fetch(origin+'/auth/confirm?type=email&token_hash='+emailToken);
+  assert.equal(confirmPage.status,200);assert.match(confirmPage.headers.get('cache-control'),/no-store/);
+  const confirmationHtml=await confirmPage.text();
+  assert(confirmationHtml.includes('no-referrer')&&confirmationHtml.includes('/auth/confirm/verify'));
+  assert.equal(emailVerifications,0,'opening or scanning the landing page must not consume the token');
+  const form=type=>new URLSearchParams({token_hash:emailToken,type,next:'https://evil.invalid'});
+  const foreignConfirm=await fetch(verificationUrl,{method:'POST',headers:{Origin:'https://evil.invalid'},body:form('email'),redirect:'manual'});
+  assert.equal(foreignConfirm.status,403);assert.equal(emailVerifications,0);
+  const invalidType=await fetch(verificationUrl,{method:'POST',headers:{Origin:origin},body:form('invite'),redirect:'manual'});
+  assert.equal(invalidType.headers.get('location'),'/login?error=callback');assert.equal(emailVerifications,0);
+  assert.equal((await fetch(verificationUrl,{method:'POST',headers:{Origin:origin},body:new URLSearchParams({token_hash:'a'.repeat(5000),type:'email'}),redirect:'manual'})).status,413);
+  for(const [type,destination] of [['email','/'],['recovery','/reset-password']]) {
+    // No cookies / PKCE verifier: the recipient may use a different browser.
+    const verifiedEmail=await fetch(verificationUrl,{method:'POST',headers:{Origin:origin},body:form(type),redirect:'manual'});
+    assert.equal(verifiedEmail.status,303);assert.equal(verifiedEmail.headers.get('location'),destination);
+    assert(verifiedEmail.headers.get('set-cookie')?.includes('sb-127-auth-token'));
+    assert.equal(verifiedEmail.headers.get('referrer-policy'),'no-referrer');
+  }
+  const reused=await fetch(verificationUrl,{method:'POST',headers:{Origin:origin},body:form('email'),redirect:'manual'});
+  assert.equal(reused.headers.get('location'),'/login?error=callback','used tokens cannot sign in twice');
   const blocked=await fetch(origin+'/auth/signout',{method:'POST',headers:{...headers,Origin:'https://evil.invalid'},redirect:'manual'});
   assert.equal(blocked.status,403);
   const logout=await fetch(origin+'/auth/signout',{method:'POST',headers:{...headers,Origin:origin},redirect:'manual'});
