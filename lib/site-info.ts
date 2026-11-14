@@ -6,7 +6,7 @@ export const SITE_INFO = {
   policyVersion: ACCOUNT_POLICY_VERSION,
   operator: process.env.NEXT_PUBLIC_HIKMAH_OPERATOR || 'Areej Ali — Hikmah personal project / مشروع حكمة الشخصي',
   address: process.env.NEXT_PUBLIC_HIKMAH_BUSINESS_ADDRESS || 'Jeddah, Saudi Arabia / جدة، المملكة العربية السعودية',
-  registration: process.env.NEXT_PUBLIC_HIKMAH_REGISTRATION || 'Personal project; no commercial registration / مشروع شخصي بلا سجل تجاري',
+  registration: process.env.NEXT_PUBLIC_HIKMAH_REGISTRATION || '',
 };
 
 export const POLICY_LINKS = [
