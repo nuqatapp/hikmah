@@ -25,6 +25,7 @@ jobs:
       - run: node tests/privacy-lifecycle.mjs
       - run: node tests/room-polling.mjs
       - run: node tests/game-transport.mjs
+      - run: node tests/backend-proxy.mjs
       - run: pnpm run build:backend
       - run: pnpm run build
       - run: node tests/next-runtime.mjs

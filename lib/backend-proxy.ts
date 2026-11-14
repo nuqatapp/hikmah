@@ -20,7 +20,10 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
       }
     }
     const base = process.env.HIKMAH_PREVIEW_BACKEND_URL || process.env.HIKMAH_BACKEND_URL;
-    const token = process.env.HIKMAH_BACKEND_TOKEN?.trim();
+    // The preview can use its own private credential without changing Production.
+    const token = (process.env.HIKMAH_PREVIEW_BACKEND_URL
+      ? process.env.HIKMAH_PREVIEW_BACKEND_TOKEN || process.env.HIKMAH_BACKEND_TOKEN
+      : process.env.HIKMAH_BACKEND_TOKEN)?.trim();
     if (!base || !token) throw new Error('The backend connection is not configured.');
     if(!/^[a-f0-9]{64}$/.test(token))throw Object.assign(new Error('The backend credential format is invalid.'),{name:'CredentialFormatError'});
     const target = new URL(base);
