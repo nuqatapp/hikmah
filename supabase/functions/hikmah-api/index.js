@@ -2034,15 +2034,15 @@ async function runPrivacyMaintenance(sql) {
   for (const job of jobs) if (await finishErasure(sql, job.auth_user_id)) completed++;
   const cutoff = Date.now() - 30 * 864e5;
   await withDatabase(sql, async () => {
-    await run("DELETE FROM rooms WHERE host LIKE 'g_%' AND mode='solo' AND updated_at<? AND NOT EXISTS(SELECT 1 FROM rounds r JOIN attempts a ON a.round=r.id WHERE r.room=rooms.id AND a.created_at>=?)", cutoff, cutoff);
-    await run("DELETE FROM attempts WHERE user LIKE 'g_%' AND created_at<?", cutoff);
+    await run("DELETE FROM rooms WHERE substr(host,1,2)='g_' AND mode='solo' AND updated_at<? AND NOT EXISTS(SELECT 1 FROM rounds r JOIN attempts a ON a.round=r.id WHERE r.room=rooms.id AND a.created_at>=?)", cutoff, cutoff);
+    await run("DELETE FROM attempts WHERE substr(user,1,2)='g_' AND created_at<?", cutoff);
     await run("DELETE FROM account_erasure_jobs WHERE status='completed' AND completed_at<?", cutoff);
   });
   return { ok: true, erasureJobsChecked: jobs.length, erasureJobsCompleted: completed, storageJobsChecked: files.length, storageJobsCompleted: filesCompleted };
 }
 
 // backend/index.ts
-var BACKEND_VERSION = "2026-11-13-privacy-1";
+var BACKEND_VERSION = "2026-11-14-privacy-2";
 function validActor(value) {
   return value && typeof value.id === "string" && value.id.length > 0 && value.id.length <= 200 && typeof value.name === "string" && value.name.length <= 200 && typeof value.signed === "boolean" && (value.signed ? !value.id.startsWith("g_") : /^g_[a-f0-9-]{36}$/.test(value.id)) && (value.authUserId === void 0 || value.signed && typeof value.authUserId === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value.authUserId) && value.id === "sb_" + value.authUserId);
 }

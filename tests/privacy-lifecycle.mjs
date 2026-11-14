@@ -75,10 +75,19 @@ try{
  const old=Date.now()-31*86400_000;
  const oldGuest=await s.createRoom('letters','en','solo',guest);await s.run('UPDATE rooms SET updated_at=? WHERE id=?',old,oldGuest.id);
  const legacy=await s.createRoom('letters','en','solo',bob);await s.run('UPDATE rooms SET updated_at=? WHERE id=?',old,legacy.id);
+ const legacyG={id:'gamer-legacy',name:'Legacy QA',signed:true};await s.ensureProfile(legacyG);
+ const namedLegacy=await s.createRoom('letters','en','solo',legacyG);
+ const legacyState=await s.roomState(namedLegacy.id,legacyG);
+ const legacyRound=await s.one('SELECT * FROM rounds WHERE id=?',legacyState.round.id);
+ await s.submit(namedLegacy.id,legacyRound.id,JSON.parse(legacyRound.snapshot).answer,legacyG);
+ await s.run('UPDATE rooms SET updated_at=? WHERE id=?',old,namedLegacy.id);
+ await s.run('UPDATE attempts SET created_at=? WHERE user=?',old,legacyG.id);
  await s.run('INSERT INTO storage_deletion_jobs(path,requested_at) VALUES(?,?)','avatars/old.png',old);
  const maintenance=await s.runPrivacyMaintenance({});assert.equal(maintenance.storageJobsCompleted,1);
  assert.equal(await s.one('SELECT id FROM rooms WHERE id=?',oldGuest.id),null,'expired guest game is purged');
  assert(await s.one('SELECT id FROM rooms WHERE id=?',legacy.id),'signed-in game is preserved');
+ assert(await s.one('SELECT id FROM rooms WHERE id=?',namedLegacy.id),'a legacy ID starting with g is not a guest');
+ assert.equal((await s.one('SELECT count(*) AS n FROM attempts WHERE user=?',legacyG.id)).n,1,'legacy attempts are retained');
  assert(await s.profile(bob.id),'other accounts are preserved');
  console.log(JSON.stringify({passed:true,coverage:['server-enforced versioned consent','guardian authorisation','verified identity boundary','own-account export','authoritative move response','suspended-account erasure','host anonymisation','durable storage/Auth retries','idempotent cleanup','guest retention','other-user preservation']}));
 }finally{globalThis.fetch=originalFetch;delete globalThis.__db;delete globalThis.__actor;delete globalThis.__bucket;delete process.env.SUPABASE_SERVICE_ROLE_KEY;delete process.env.SUPABASE_URL;db.close();rmSync(dir,{recursive:true,force:true})}

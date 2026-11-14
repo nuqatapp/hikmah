@@ -12,10 +12,16 @@ The frontend is deployed by Netlify from `nuqatapp/hikmah`. The game backend is 
    The same backend is deployed separately as `hikmah-api-candidate` for preview validation. Configure `HIKMAH_PREVIEW_BACKEND_URL` and the secret `HIKMAH_PREVIEW_BACKEND_TOKEN` in the Netlify Deploy Previews context only, with Functions scope. Provision only its SHA-256 hash in the private `hikmah.server_credentials` table. Production continues using `HIKMAH_BACKEND_URL` and `HIKMAH_BACKEND_TOKEN`; never overwrite the Production secret to fix a preview. The preview credential can be revoked independently when no longer needed.
 4. Run `pnpm run build:backend`. Deploy the generated `supabase/functions/hikmah-api/index.js` and `deno.json` to the existing `hikmah-api` function. Preserve its existing private server-token gate. Its gateway JWT setting is deliberately disabled because the function implements its own credential verification.
 5. Publish the matching frontend promptly. Signed-in game actions require current account authorisation; an older frontend cannot complete that onboarding. Use a coordinated release window. Keep guest play available.
-6. Verify `X-Hikmah-Backend-Version: 2026-11-13-privacy-1` on game API responses, a complete session in each mode/language, two-account multiplayer, export and erasure with disposable accounts, and measured request latency. Do not infer a successful backend release from the Netlify commit alone.
+6. Verify `X-Hikmah-Backend-Version: 2026-11-14-privacy-2` on game API responses, a complete session in each mode/language, two-account multiplayer, export and erasure with disposable accounts, and measured request latency. Do not infer a successful backend release from the Netlify commit alone.
 7. Confirm Netlify registered the daily `privacy-maintenance` scheduled function (03:00 UTC / 06:00 Saudi time) and its production runtime has `HIKMAH_BACKEND_URL` and `HIKMAH_BACKEND_TOKEN`. A failed run must be investigated; the next daily run retries durable pending jobs.
 
 No secret belongs in a browser bundle or this document. Supabase needs its existing server-side DB URL and service-role key. Netlify needs its existing private proxy token. `HIKMAH_BACKEND_REGION` optionally overrides the default Frankfurt function routing.
+
+## Auth URL and email configuration
+
+The live QA on 14 November 2026 found a confirmation link returning to `localhost:3000`. In Supabase Authentication → URL Configuration, set Site URL to `https://hikmahgame.com`. Allow the production and pinned preview callbacks, including their query parameters: `https://hikmahgame.com/auth/callback**` and `https://deploy-preview-1--hikmah-wisdom-games.netlify.app/auth/callback**`. Preserve any other verified application callbacks. Do not use an unrestricted external-domain wildcard. The app also forwards root `?code=` returns through its normal PKCE callback, with safe `next` validation.
+
+The operator confirmed receipt of both QA confirmation and password-reset emails. A further signup returned `over_email_send_rate_limit`. Verify custom SMTP configuration and the project's configured limits before public launch; do not disable email confirmation to work around the limit. Use an authenticated sender on the operator's domain, retain applicable processor/transfer evidence, and test the complete confirmation/reset return path after saving URL settings. No email password or SMTP secret belongs in chat or source code.
 
 ## Rights requests
 

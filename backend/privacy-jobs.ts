@@ -36,8 +36,9 @@ export async function runPrivacyMaintenance(sql:Connection) {
   let completed=0;for(const job of jobs)if(await finishErasure(sql,job.auth_user_id))completed++;
   const cutoff=Date.now()-30*86400_000;
   await withDatabase(sql,async()=>{
-    await run("DELETE FROM rooms WHERE host LIKE 'g_%' AND mode='solo' AND updated_at<? AND NOT EXISTS(SELECT 1 FROM rounds r JOIN attempts a ON a.round=r.id WHERE r.room=rooms.id AND a.created_at>=?)",cutoff,cutoff);
-    await run("DELETE FROM attempts WHERE user LIKE 'g_%' AND created_at<?",cutoff);
+    // SQL LIKE treats '_' as a wildcard; match the literal guest prefix instead.
+    await run("DELETE FROM rooms WHERE substr(host,1,2)='g_' AND mode='solo' AND updated_at<? AND NOT EXISTS(SELECT 1 FROM rounds r JOIN attempts a ON a.round=r.id WHERE r.room=rooms.id AND a.created_at>=?)",cutoff,cutoff);
+    await run("DELETE FROM attempts WHERE substr(user,1,2)='g_' AND created_at<?",cutoff);
     await run("DELETE FROM account_erasure_jobs WHERE status='completed' AND completed_at<?",cutoff);
   });
   return {ok:true,erasureJobsChecked:jobs.length,erasureJobsCompleted:completed,storageJobsChecked:files.length,storageJobsCompleted:filesCompleted};

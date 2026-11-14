@@ -44,6 +44,12 @@ try {
     assert((await response.text()).includes('Hikmah'), path);
   }
   const privacy=await (await fetch(origin+'/privacy')).text();
+  const callback=await fetch(origin+'/?code=qa-callback-code&next=%2Fprofile',{redirect:'manual'});
+  assert.equal(callback.status,307);assert.equal(callback.headers.get('location'),'/auth/callback?code=qa-callback-code&next=%2Fprofile');
+  const unsafeCallback=await fetch(origin+'/?code=qa-callback-code&next=https%3A%2F%2Fother.example',{redirect:'manual'});
+  assert.equal(unsafeCallback.headers.get('location'),'/auth/callback?code=qa-callback-code&next=%2F');
+  const failedCallback=await fetch(origin+'/?error=access_denied',{redirect:'manual'});
+  assert.equal(failedCallback.headers.get('location'),'/login?error=callback');
   assert(privacy.includes('Areej Ali')&&privacy.includes('Nuqat.app@gmail.com')&&privacy.includes('Jeddah'));
   const notices=await fetch(origin+'/third-party-notices.txt');
   assert.equal(notices.status,200);assert((await notices.text()).includes('HIKMAH THIRD-PARTY SOFTWARE NOTICES'));
