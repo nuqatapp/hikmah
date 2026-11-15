@@ -19,3 +19,9 @@ verifyDepsBeforeRun: false
 optimisticRepeatInstall: false
 overrides:
   miniflare>sharp: 0.35.4
+  # Security floor for the compiler's browser-target resolver (GHSA-c83g-rgw3-j3cx).
+  browserslist@<4.28.7: 4.28.7
+  brace-expansion@>=5.0.0 <5.0.12: 5.0.12
+  # React Hooks explicitly supports Zod 4; keep its validator on the patched line.
+  eslint-plugin-react-hooks>zod: 4.6.6
+  zod-validation-error>zod: 4.6.6

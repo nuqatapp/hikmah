@@ -1,6 +1,6 @@
-Package: @next/env@16.3.4
+Package: @next/env@16.4.1
 Declared licence: MIT
-Source: https://raw.githubusercontent.com/vercel/next.js/v16.3.4/license.md
+Source: https://raw.githubusercontent.com/vercel/next.js/v16.4.1/license.md
 
 The MIT License (MIT)
 
