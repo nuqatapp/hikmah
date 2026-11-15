@@ -53,6 +53,10 @@ Supabase custom SMTP is enabled with `smtp.resend.com:465`, username `resend`, s
 
 That real link exposed a validator error: Supabase hashes can carry a `pkce_` prefix, which the hex-only landing/POST validators rejected. The shared bounded URL-safe validator now keeps the opaque hash unchanged and delegates authenticity/expiry to Supabase. Runtime checks cover prefixed signup/recovery tokens without an originating-browser cookie, malformed hashes, upstream rejection, scanner GETs, replay and redirect isolation. Finish real confirmation/reset verification before declaring the email work complete. Public privacy wording now names Resend and its actual sending/storage locations, with its own updated date. The removed registration-status disclaimer must not be reinstated or replaced with an invented registration number.
 
+## Native email confirmation form policy
+
+The confirmation landing page uses `strict-origin` referrer metadata: only the site origin can be sent, never the token-bearing path/query. Do not replace this with `no-referrer` on the native POST landing page: browsers can then send `Origin: null`, which the verification route correctly rejects. The verification response still uses `no-referrer`. Preserve rejection of foreign, opaque and missing origins; verify a real browser button submission as well as the HTTP/runtime tests when changing this flow.
+
 ## Rights requests
 
 Check the support inbox regularly. Record receipt date, request type, due date, identity-verification method, outcome, necessary retention exception and completion date in a restricted register. Do not copy passwords, identity documents or unnecessary account data into tickets.

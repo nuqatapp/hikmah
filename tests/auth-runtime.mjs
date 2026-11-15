@@ -77,15 +77,18 @@ try {
   const confirmPage=await fetch(origin+'/auth/confirm?type=email&token_hash='+emailToken);
   assert.equal(confirmPage.status,200);assert.match(confirmPage.headers.get('cache-control'),/no-store/);
   const confirmationHtml=await confirmPage.text();
-  assert(confirmationHtml.includes('no-referrer')&&confirmationHtml.includes('/auth/confirm/verify'));
+  assert.match(confirmationHtml,/<meta name="referrer" content="strict-origin"\/?\s*>/,'native POST must retain Origin while omitting the token-bearing referrer path/query');
+  assert(confirmationHtml.includes('/auth/confirm/verify'));
   const prefixedPage=await fetch(origin+'/auth/confirm?type=email&token_hash='+prefixedEmailToken);
   const prefixedHtml=await prefixedPage.text();
   assert.equal(prefixedPage.status,200);
   assert(prefixedHtml.includes('action="/auth/confirm/verify"')&&prefixedHtml.includes('value="'+prefixedEmailToken+'"'),'a real-shaped PKCE hash must reach the confirmation form unchanged');
   assert.equal(emailVerifications,0,'opening or scanning the landing page must not consume the token');
   const form=(type,hash=emailToken)=>new URLSearchParams({token_hash:hash,type,next:'https://evil.invalid'});
-  const foreignConfirm=await fetch(verificationUrl,{method:'POST',headers:{Origin:'https://evil.invalid'},body:form('email'),redirect:'manual'});
-  assert.equal(foreignConfirm.status,403);assert.equal(emailVerifications,0);
+  for(const candidate of ['https://evil.invalid','null',undefined]){
+    const foreignConfirm=await fetch(verificationUrl,{method:'POST',headers:candidate?{Origin:candidate}:{},body:form('email'),redirect:'manual'});
+    assert.equal(foreignConfirm.status,403);assert.equal(emailVerifications,0,'foreign, opaque and missing origins must not reach verification');
+  }
   const invalidType=await fetch(verificationUrl,{method:'POST',headers:{Origin:origin},body:form('invite'),redirect:'manual'});
   assert.equal(invalidType.headers.get('location'),'/login?error=callback');assert.equal(emailVerifications,0);
   for(const hash of ['pkce_','a'.repeat(257),'a'.repeat(32)+'/','a'.repeat(31)]){
