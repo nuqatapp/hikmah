@@ -3,7 +3,9 @@ import {EmailConfirmation} from '@/components/hikmah/email-confirmation';
 import {validEmailTokenHash} from '@/lib/supabase/email-token';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = {title:'Confirm email | Hikmah',referrer:'no-referrer',robots:{index:false,follow:false}};
+// Native POST forms need their Origin for CSRF checks. strict-origin omits the
+// entire path/query (including the token) without turning that Origin into null.
+export const metadata: Metadata = {title:'Confirm email | Hikmah',referrer:'strict-origin',robots:{index:false,follow:false}};
 
 export default async function ConfirmEmail({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}) {
   const params=await searchParams;
