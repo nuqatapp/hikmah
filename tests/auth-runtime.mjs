@@ -13,6 +13,10 @@ const cookie = 'sb-127-auth-token=base64-' + encode(session);
 let allowed = true;
 let deletedAccount=false;
 let emailVerifications=0;
+let signups=0;
+const attestations=[];
+const automaticHash='c'.repeat(64);
+const mismatchedHash='d'.repeat(64);
 const consumedEmailTokens=new Set();
 const prefixedEmailToken='pkce_'+'b'.repeat(56);
 const mock = createServer(async (request,response) => {
@@ -22,11 +26,18 @@ const mock = createServer(async (request,response) => {
     response.end(JSON.stringify(user));return;
   }
   if(request.url.startsWith('/auth/v1/settings')) {response.end(JSON.stringify({external:{google:true,email:true}}));return;}
+  if(request.url.startsWith('/auth/v1/signup')) {
+    signups++;
+    let body='';for await(const chunk of request)body+=chunk;
+    const input=JSON.parse(body);
+    assert.deepEqual(input.data,{full_name:'Player'});
+    response.end(JSON.stringify({...user,email:input.email,email_confirmed_at:null,identities:input.email.startsWith('existing')?[]:[{id:uuid,provider:'email'}]}));return;
+  }
   if(request.url==='/auth/v1/verify') {
     emailVerifications++;
     let body='';for await(const chunk of request)body+=chunk;
     const input=JSON.parse(body),key=input.type+':'+input.token_hash;
-    if(!['a'.repeat(64),prefixedEmailToken].includes(input.token_hash)||consumedEmailTokens.has(key)){response.statusCode=400;response.end('{"message":"Invalid or expired token"}');return;}
+    if(!['a'.repeat(64),prefixedEmailToken,automaticHash,mismatchedHash].includes(input.token_hash)||consumedEmailTokens.has(key)){response.statusCode=400;response.end('{"message":"Invalid or expired token"}');return;}
     consumedEmailTokens.add(key);response.end(JSON.stringify(session));return;
   }
   if(request.url.startsWith('/auth/v1/logout')) {response.statusCode=deletedAccount?404:200;response.end(deletedAccount?'{"message":"User not found"}':'{}');return;}
@@ -36,6 +47,12 @@ const mock = createServer(async (request,response) => {
     response.end(JSON.stringify(session));return;
   }
   if(request.url.startsWith('/backend')) {
+    if(new URL(request.url,'http://localhost').searchParams.get('resource')==='signup-consent'){
+      assert(!request.headers['x-hikmah-actor']);
+      assert.equal(request.headers['x-hikmah-server-token'],'a'.repeat(64));
+      let body='';for await(const chunk of request)body+=chunk;
+      attestations.push(JSON.parse(body));response.end('{"ok":true}');return;
+    }
     response.end(JSON.stringify({actor:JSON.parse(decodeURIComponent(request.headers['x-hikmah-actor']))}));return;
   }
   response.statusCode=404;response.end('{}');
@@ -104,6 +121,46 @@ try {
     assert(verifiedEmail.headers.get('set-cookie')?.includes('sb-127-auth-token'));
     assert.equal(verifiedEmail.headers.get('referrer-policy'),'no-referrer');
   }
+  const signupUrl=origin+'/auth/signup';
+  const consent={version:'2026-11-13',capacity:'guardian',relationship:'legal_guardian',accepted:true,legalCapacity:true,childDataConsent:true};
+  const signupBody={name:'Player',email:'test@example.invalid',password:'test-password-only',consent};
+  const signup=(body,source=origin)=>fetch(signupUrl,{method:'POST',headers:{Origin:source,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  assert.equal((await signup(signupBody,'https://evil.invalid')).status,403);
+  assert.equal((await signup({...signupBody,consent:{...consent,childDataConsent:false}})).status,400);
+  assert.equal(signups,0,'invalid requests must not create Auth users');
+  const created=await signup(signupBody);
+  assert.equal(created.status,200);
+  assert.deepEqual(await created.json(),{signedIn:false});
+  assert.deepEqual(attestations,[{authUserId:uuid,consent}]);
+  const marker=created.headers.getSetCookie().find(value=>value.startsWith('__Host-hikmah_signup='));
+  assert.match(marker,/HttpOnly/i);
+  assert.match(marker,/Secure/i);
+  const pendingCookie=marker.split(';')[0];
+  const duplicate=await signup({...signupBody,email:'existing@example.invalid'});
+  assert.deepEqual(await duplicate.json(),{signedIn:false});
+  assert.equal(attestations.length,1,'an obfuscated duplicate must not record consent');
+  assert(!duplicate.headers.getSetCookie().some(value=>value.startsWith('__Host-hikmah_signup=')));
+  const landing=origin+'/auth/confirm?type=email&token_hash='+automaticHash;
+  const checksBeforeAuto=emailVerifications;
+  for(const headers of [{Cookie:pendingCookie},{'Sec-Fetch-User':'?1'}]){
+    const response=await fetch(landing,{headers});
+    assert(!(await response.text()).includes('name="automatic"'),'auto-submit requires a browser marker and user gesture');
+  }
+  const sameBrowser=await fetch(landing,{headers:{Cookie:pendingCookie,'Sec-Fetch-User':'?1'}});
+  assert((await sameBrowser.text()).includes('name="automatic"'));
+  assert.equal(emailVerifications,checksBeforeAuto,'a landing GET never consumes an email token');
+  const auto=(hash,marker)=>fetch(verificationUrl,{method:'POST',headers:{Origin:origin,...(marker&&{Cookie:marker})},body:new URLSearchParams({type:'email',token_hash:hash,automatic:'1'}),redirect:'manual'});
+  const wrongBrowser=await auto(automaticHash);
+  assert.equal(wrongBrowser.headers.get('location'),'/login?error=callback');
+  assert.equal(emailVerifications,checksBeforeAuto);
+  const wrongAccount=await auto(mismatchedHash,pendingCookie.replace(uuid,'22222222-2222-4222-8222-222222222222'));
+  assert.equal(wrongAccount.headers.get('location'),'/login?error=callback');
+  assert(!wrongAccount.headers.getSetCookie().some(value=>value.startsWith('sb-127-auth-token=')));
+  const automatic=await auto(automaticHash,pendingCookie);
+  assert.equal(automatic.headers.get('location'),'/');
+  assert(automatic.headers.getSetCookie().some(value=>value.startsWith('sb-127-auth-token=')));
+  const verifiedDashboard=await fetch(origin+'/api/game?action=dashboard',{headers:{Cookie:automatic.headers.getSetCookie().find(value=>value.startsWith('sb-127-auth-token=')).split(';')[0]}});
+  assert.equal((await verifiedDashboard.json()).actor.authUserId,uuid);
   const reused=await fetch(verificationUrl,{method:'POST',headers:{Origin:origin},body:form('email'),redirect:'manual'});
   assert.equal(reused.headers.get('location'),'/login?error=callback','used tokens cannot sign in twice');
   const invalidUpstream=await fetch(verificationUrl,{method:'POST',headers:{Origin:origin},body:form('email','z'.repeat(64)),redirect:'manual'});
@@ -125,7 +182,7 @@ try {
   deletedAccount=true;
   const erasedLogout=await fetch(origin+'/auth/signout',{method:'POST',headers:{...headers,Origin:origin},redirect:'manual'});
   assert.equal(erasedLogout.status,303);assertSessionCleared(erasedLogout);
-  console.log('Passed: verified account, metadata isolation, revoked session rejection, password reset guard, PKCE callback, redirect isolation, logout and CSRF protection.');
+  console.log('Passed: verified account, metadata isolation, revoked session rejection, password reset guard, PKCE callback, verified signup consent, browser-bound confirmation, duplicate signup, redirect isolation, logout and CSRF protection.');
 } finally {
   if(child.exitCode===null){const exited=once(child,'exit');child.kill('SIGTERM');await exited;}
   mock.closeAllConnections();await new Promise(r=>mock.close(r));

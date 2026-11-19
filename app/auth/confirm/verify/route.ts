@@ -1,5 +1,8 @@
 import {serverAuth} from '@/lib/supabase/server';
-import {validEmailTokenHash} from '@/lib/supabase/email-token';
+import {cookies} from 'next/headers';
+import {createClient} from '@supabase/supabase-js';
+import {authConfig} from '@/lib/supabase/config';
+import {signupBrowserCookie,validEmailTokenHash} from '@/lib/supabase/email-token';
 
 export async function POST(request:Request) {
   const headers={'Cache-Control':'no-store','Referrer-Policy':'no-referrer'};
@@ -18,8 +21,23 @@ export async function POST(request:Request) {
     if(!validEmailTokenHash(token)||(type!=='email'&&type!=='recovery'))return fail();
     const client=await serverAuth();
     if(!client)return fail();
-    const {error}=await client.auth.verifyOtp({token_hash:token,type});
-    if(error)return fail();
+    const jar=await cookies();
+    if(form.get('automatic')==='1'){
+      const expected=jar.get(signupBrowserCookie)?.value;
+      const config=authConfig();
+      if(type!=='email'||!expected||!config)return fail();
+      // Verify in an isolated client. A token for a different account must
+      // never replace this browser's session during automatic confirmation.
+      const verifier=createClient(config.url,config.key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+      const {data,error}=await verifier.auth.verifyOtp({token_hash:token,type});
+      if(error||!data.session||data.user?.id!==expected)return fail();
+      const {error:sessionError}=await client.auth.setSession(data.session);
+      if(sessionError)return fail();
+    }else{
+      const {error}=await client.auth.verifyOtp({token_hash:token,type});
+      if(error)return fail();
+    }
+    if(type==='email'&&jar.has(signupBrowserCookie))jar.set(signupBrowserCookie,'',{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:0});
     // Fixed local destinations: neither template parameters nor a POST can redirect externally.
     return new Response(null,{status:303,headers:{...headers,Location:type==='recovery'?'/reset-password':'/'}});
   }catch{return fail()}

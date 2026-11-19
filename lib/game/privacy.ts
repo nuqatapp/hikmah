@@ -18,10 +18,13 @@ export async function requireAccountConsent(actor:Actor) {
 }
 export async function acceptAccountConsent(value:Record<string,unknown>) {
   const actor=await identity(),authId=verifiedAccount(actor);
+  await recordAccountConsent(authId,value,'verified_email_and_attestation');
+  return accountConsent(actor);
+}
+export async function recordAccountConsent(authId:string,value:Record<string,unknown>,method:'verified_email_and_attestation'|'signup_attestation') {
   let consent;
   try{consent=validateAccountConsent(value)}catch(e){throw new GameError((e as Error).message)}
-  await run('INSERT OR IGNORE INTO account_consents(auth_user_id,terms_version,capacity,relationship,accepted_at,verification_method) VALUES(?,?,?,?,?,?)',authId,ACCOUNT_POLICY_VERSION,consent.capacity,consent.relationship,Date.now(),'verified_email_and_attestation');
-  return accountConsent(actor);
+  await run('INSERT OR IGNORE INTO account_consents(auth_user_id,terms_version,capacity,relationship,accepted_at,verification_method) VALUES(?,?,?,?,?,?)',authId,ACCOUNT_POLICY_VERSION,consent.capacity,consent.relationship,Date.now(),method);
 }
 export async function exportAccountData() {
   const actor=await identity(),authId=verifiedAccount(actor);
