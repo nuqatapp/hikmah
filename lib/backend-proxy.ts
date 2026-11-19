@@ -1,7 +1,7 @@
 import 'server-only';
 import {siteIdentity} from './site-identity';
 
-export async function proxyBackend(request: Request, resource: 'game' | 'avatar') {
+export async function proxyBackend(request: Request, resource: 'game' | 'avatar' | 'signup-consent') {
   let stage='configuration';
   try {
     const url = new URL(request.url);
@@ -35,7 +35,7 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
     const body = request.method === 'POST' ? await request.arrayBuffer() : undefined;
     if ((body?.byteLength || 0) > limit) return Response.json({error: 'Request is too large.'}, {status: 413});
     stage='identity';
-    const actor = await siteIdentity();
+    const actor = resource==='signup-consent'?null:await siteIdentity();
     stage='upstream';
     const response = await fetch(target, {
       method: 'POST',
@@ -44,7 +44,7 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
         // Keep SQL-heavy execution beside the project's Frankfurt database.
         // This removes the per-query transatlantic round trips from Netlify.
         'x-region': process.env.HIKMAH_BACKEND_REGION || 'eu-central-1',
-        'x-hikmah-actor': encodeURIComponent(JSON.stringify(actor)),
+        ...(actor&&{'x-hikmah-actor':encodeURIComponent(JSON.stringify(actor))}),
         'content-type': request.headers.get('content-type') || 'application/json',
       },
       body,

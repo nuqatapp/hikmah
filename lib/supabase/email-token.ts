@@ -3,3 +3,5 @@ export function validEmailTokenHash(value:unknown):value is string {
   // Supabase, rather than this shape check, verifies authenticity and expiry.
   return typeof value==='string'&&/^[A-Za-z0-9_-]{32,256}$/.test(value);
 }
+
+export const signupBrowserCookie=process.env.NODE_ENV==='production'?'__Host-hikmah_signup':'hikmah_signup';

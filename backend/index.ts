@@ -1,12 +1,14 @@
 import {env} from 'node:process';
 import {createConnection, withDatabase} from '../db/raw';
 import {actorContext, type Actor} from '../lib/game/actor';
+import {recordAccountConsent} from '../lib/game/privacy';
+import {GameError} from '../lib/game/service';
 import {NextRequest} from './http';
 import * as game from './game-route';
 import * as avatar from './avatar-route';
 import {finishErasure,runPrivacyMaintenance} from './privacy-jobs';
 
-export const BACKEND_VERSION='2026-11-19-game-resume';
+export const BACKEND_VERSION='2026-11-19-signup';
 
 function validActor(value: any): value is Actor {
   return value && typeof value.id === 'string' && value.id.length > 0 && value.id.length <= 200 &&
@@ -30,6 +32,18 @@ export async function handleBackend(request: Request): Promise<Response> {
     const resource = url.searchParams.get('resource');
     const method = url.searchParams.get('method');
     if(resource==='maintenance'&&method==='POST')return Response.json(await runPrivacyMaintenance(sql));
+    // Called only by the trusted site signup handler, never by the game API.
+    if(resource==='signup-consent'&&method==='POST'){
+      const body=await request.text();
+      if(body.length>4096)return Response.json({error:'Request too large.'},{status:413});
+      let payload;
+      try{payload=JSON.parse(body)}catch{return Response.json({error:'Invalid request.'},{status:400})}
+      if(typeof payload?.authUserId!=='string'||!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(payload.authUserId))
+        return Response.json({error:'Invalid identity.'},{status:400});
+      try{await withDatabase(sql,()=>recordAccountConsent(payload.authUserId,payload.consent,'signup_attestation'))}
+      catch(error){if(error instanceof GameError)return Response.json({error:error.message},{status:error.status});throw error}
+      return Response.json({ok:true});
+    }
     if (!['game', 'avatar'].includes(resource || '') || !['GET', 'POST'].includes(method || '')) return Response.json({error: 'Unknown request.'}, {status: 404});
     const body = method === 'POST' ? await request.arrayBuffer() : undefined;
     const limit = resource === 'avatar' ? 5_300_000 : 40_000;

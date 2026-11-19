@@ -47,8 +47,13 @@ try{
  assert.equal((await s.one('SELECT count(*) AS n FROM account_consents WHERE auth_user_id=?',bob.authUserId)).n,0,'request cannot write someone else’s consent');
  await post({action:'consent',...consent});assert.equal((await s.one('SELECT count(*) AS n FROM account_consents')).n,1,'consent acceptance is idempotent');
  globalThis.__actor=bob;
- assert.equal((await post({action:'consent',...consent,capacity:'guardian',relationship:'parent',childDataConsent:true})).status,200);
- assert.equal((await s.accountConsent(bob)).capacity,'guardian');
+ const guardianConsent={...consent,capacity:'guardian',relationship:'parent',childDataConsent:true};
+ await s.recordAccountConsent(bob.authUserId,guardianConsent,'signup_attestation');
+ await s.recordAccountConsent(bob.authUserId,consent,'signup_attestation');
+ assert.equal((await s.accountConsent(bob)).capacity,'guardian','a verified account uses its original signup consent');
+ const firstGame=await post({action:'create',kind:'mcq',locale:'en',mode:'solo'});
+ assert.equal(firstGame.status,200,'signup consent unlocks play without a second consent request');
+ await s.leaveRoom((await firstGame.json()).id,bob.id);
  globalThis.__actor=guest;assert.equal((await post({action:'consent',...consent})).status,401);await assert.rejects(s.exportAccountData,/verified account/);
  globalThis.__actor=alice;
  const created=await (await post({action:'create',kind:'mcq',locale:'en',mode:'solo'})).json();

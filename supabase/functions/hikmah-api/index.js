@@ -153,22 +153,6 @@ async function identity() {
   return actor;
 }
 
-// backend/http.ts
-var NextRequest = class extends Request {
-  get nextUrl() {
-    return new URL(this.url);
-  }
-};
-var NextResponse = { json: (value, init2) => Response.json(value, init2) };
-
-// backend/game-route.ts
-var game_route_exports = {};
-__export(game_route_exports, {
-  GET: () => GET,
-  POST: () => POST,
-  dynamic: () => dynamic
-});
-
 // lib/game/seed.json
 var seed_default = [
   {
@@ -1767,14 +1751,17 @@ async function requireAccountConsent(actor) {
 }
 async function acceptAccountConsent(value) {
   const actor = await identity(), authId = verifiedAccount(actor);
+  await recordAccountConsent(authId, value, "verified_email_and_attestation");
+  return accountConsent(actor);
+}
+async function recordAccountConsent(authId, value, method) {
   let consent;
   try {
     consent = validateAccountConsent(value);
   } catch (e) {
     throw new GameError(e.message);
   }
-  await run("INSERT OR IGNORE INTO account_consents(auth_user_id,terms_version,capacity,relationship,accepted_at,verification_method) VALUES(?,?,?,?,?,?)", authId, ACCOUNT_POLICY_VERSION, consent.capacity, consent.relationship, Date.now(), "verified_email_and_attestation");
-  return accountConsent(actor);
+  await run("INSERT OR IGNORE INTO account_consents(auth_user_id,terms_version,capacity,relationship,accepted_at,verification_method) VALUES(?,?,?,?,?,?)", authId, ACCOUNT_POLICY_VERSION, consent.capacity, consent.relationship, Date.now(), method);
 }
 async function exportAccountData() {
   const actor = await identity(), authId = verifiedAccount(actor);
@@ -1811,7 +1798,21 @@ async function requestAccountErasure(confirm) {
   return { erasureRequested: true };
 }
 
+// backend/http.ts
+var NextRequest = class extends Request {
+  get nextUrl() {
+    return new URL(this.url);
+  }
+};
+var NextResponse = { json: (value, init2) => Response.json(value, init2) };
+
 // backend/game-route.ts
+var game_route_exports = {};
+__export(game_route_exports, {
+  GET: () => GET,
+  POST: () => POST,
+  dynamic: () => dynamic
+});
 var dynamic = "force-dynamic";
 function json(data, status = 200) {
   return NextResponse.json(data, { status, headers: { "Cache-Control": "no-store" } });
@@ -2042,7 +2043,7 @@ async function runPrivacyMaintenance(sql) {
 }
 
 // backend/index.ts
-var BACKEND_VERSION = "2026-11-19-game-resume";
+var BACKEND_VERSION = "2026-11-19-signup";
 function validActor(value) {
   return value && typeof value.id === "string" && value.id.length > 0 && value.id.length <= 200 && typeof value.name === "string" && value.name.length <= 200 && typeof value.signed === "boolean" && (value.signed ? !value.id.startsWith("g_") : /^g_[a-f0-9-]{36}$/.test(value.id)) && (value.authUserId === void 0 || value.signed && typeof value.authUserId === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value.authUserId) && value.id === "sb_" + value.authUserId);
 }
@@ -2059,6 +2060,25 @@ async function handleBackend(request) {
     const resource = url.searchParams.get("resource");
     const method = url.searchParams.get("method");
     if (resource === "maintenance" && method === "POST") return Response.json(await runPrivacyMaintenance(sql));
+    if (resource === "signup-consent" && method === "POST") {
+      const body2 = await request.text();
+      if (body2.length > 4096) return Response.json({ error: "Request too large." }, { status: 413 });
+      let payload;
+      try {
+        payload = JSON.parse(body2);
+      } catch {
+        return Response.json({ error: "Invalid request." }, { status: 400 });
+      }
+      if (typeof payload?.authUserId !== "string" || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(payload.authUserId))
+        return Response.json({ error: "Invalid identity." }, { status: 400 });
+      try {
+        await withDatabase(sql, () => recordAccountConsent(payload.authUserId, payload.consent, "signup_attestation"));
+      } catch (error2) {
+        if (error2 instanceof GameError) return Response.json({ error: error2.message }, { status: error2.status });
+        throw error2;
+      }
+      return Response.json({ ok: true });
+    }
     if (!["game", "avatar"].includes(resource || "") || !["GET", "POST"].includes(method || "")) return Response.json({ error: "Unknown request." }, { status: 404 });
     const body = method === "POST" ? await request.arrayBuffer() : void 0;
     const limit = resource === "avatar" ? 53e5 : 4e4;
