@@ -922,14 +922,14 @@ SOFTWARE.
 
 
 ========================================================================
-@next/env @ 16.4.1
+@next/env @ 16.4.5
 Licence expression: MIT
 https://github.com/vercel/next.js#readme
 
 Upstream licence supplement
-Package: @next/env@16.4.1
+Package: @next/env@16.4.5
 Declared licence: MIT
-Source: https://raw.githubusercontent.com/vercel/next.js/v16.4.1/license.md
+Source: https://raw.githubusercontent.com/vercel/next.js/v16.4.5/license.md
 
 The MIT License (MIT)
 
@@ -955,14 +955,47 @@ SOFTWARE.
 
 
 ========================================================================
-@next/swc-win32-x64-msvc @ 16.4.1
+@next/swc-win32-x64-msvc @ 16.4.5
 Licence expression: MIT
 https://github.com/vercel/next.js#readme
 
 Upstream licence supplement
-Package: @next/swc-win32-x64-msvc@16.4.1
+Package: @next/swc-win32-x64-msvc@16.4.5
 Declared licence: MIT
-Source: https://raw.githubusercontent.com/vercel/next.js/v16.4.1/license.md
+Source: https://raw.githubusercontent.com/vercel/next.js/v16.4.5/license.md
+
+The MIT License (MIT)
+
+Copyright (c) 2025 Vercel, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+========================================================================
+@next/swc-linux-x64-gnu @ 16.4.5
+Licence expression: MIT
+https://github.com/vercel/next.js#readme
+
+Upstream licence supplement
+Package: @next/swc-linux-x64-gnu@16.4.5
+Declared licence: MIT
+Source: https://raw.githubusercontent.com/vercel/next.js/v16.4.5/license.md
 
 The MIT License (MIT)
 
@@ -4250,7 +4283,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ========================================================================
-next @ 16.4.1
+next @ 16.4.5
 Licence expression: MIT
 https://nextjs.org
 
@@ -6775,7 +6808,7 @@ third-party archives.
 
 
 ========================================================================
-caniuse-lite @ 1.0.30001793, 1.0.30001823
+caniuse-lite @ 1.0.30001823
 Licence expression: CC-BY-4.0
 https://github.com/browserslist/caniuse-lite#readme
 

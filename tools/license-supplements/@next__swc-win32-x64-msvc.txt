@@ -1,6 +1,6 @@
-Package: @next/swc-win32-x64-msvc@16.4.1
+Package: @next/swc-win32-x64-msvc@16.4.5
 Declared licence: MIT
-Source: https://raw.githubusercontent.com/vercel/next.js/v16.4.1/license.md
+Source: https://raw.githubusercontent.com/vercel/next.js/v16.4.5/license.md
 
 The MIT License (MIT)
 

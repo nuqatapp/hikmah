@@ -49,5 +49,16 @@ await s.submit(wrong.id,rd.id,(Number(snap.answer)+1)%snap.choices.length,a);awa
 const skip=await s.createRoom('letters','en','solo',b);st=await s.roomState(skip.id,b);let balance=(await s.profile(b.id)).balance;await s.submit(skip.id,st.round.id,null,b,true);await s.submit(skip.id,st.round.id,null,b,true);assert.equal((await s.profile(b.id)).balance,balance-5);await s.leaveRoom(skip.id,b.id);
 // Guest play works without a wallet and cannot access someone else's game.
 const g=await s.createRoom('letters','en','solo',guest);st=await s.roomState(g.id,guest);await assert.rejects(()=>s.roomState(g.id,a),/Join/);rd=await s.one('SELECT * FROM rounds WHERE id=?',st.round.id);await s.submit(g.id,rd.id,solve(JSON.parse(rd.snapshot)),guest);assert.equal((await s.one('SELECT COUNT(*) n FROM wallet WHERE user=?',guest.id)).n,0);
-console.log(JSON.stringify({passed:true,seedPuzzles:80,completedRounds:roundsChecked,coverage:['all games and languages','solo and two-player races','identical puzzle snapshots','first solver wins','simultaneous submissions','duplicate reward prevention','guest isolation','wrong-answer lockout','timeout','host recovery','skip charging','fresh migration']}));
+assert.deepEqual((await s.dashboard(guest)).active.map(room=>room.id),[g.id]);
+assert.deepEqual((await s.dashboard({...guest,id:'g_other'})).active,[]);
+await assert.rejects(()=>s.createRoom('mcq','ar','solo',guest),/Finish or leave/);
+const resumed=await s.roomState(g.id,guest);
+assert.equal(resumed.round.id,st.round.id);
+assert.equal(resumed.round.outcome,'solved');
+await s.leaveRoom(g.id,guest.id);
+assert.deepEqual((await s.dashboard(guest)).active,[]);
+const replacement=await s.createRoom('mcq','ar','solo',guest);
+assert.notEqual(replacement.id,g.id);
+assert.deepEqual((await s.dashboard(guest)).active.map(room=>room.id),[replacement.id]);
+console.log(JSON.stringify({passed:true,seedPuzzles:80,completedRounds:roundsChecked,coverage:['all games and languages','solo and two-player races','identical puzzle snapshots','first solver wins','simultaneous submissions','duplicate reward prevention','guest resume, leave and isolation','wrong-answer lockout','timeout','host recovery','skip charging','fresh migration']}));
 }finally{Date.now=original;sql.close();rmSync(tmp,{recursive:true,force:true})}
