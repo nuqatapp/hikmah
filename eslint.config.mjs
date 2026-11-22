@@ -20,7 +20,7 @@ const eslintConfig = defineConfig([
     rules:{"@typescript-eslint/no-explicit-any":"warn"},
   },
   {
-    files:["app/hikmah.tsx","components/hikmah/{admin,auth-form,journey,leaderboard,lobby,play,storage-notice,use-locale}.tsx"],
+    files:["app/hikmah.tsx","components/hikmah/{admin,auth-form,journey,leaderboard,lobby,play,storage-notice}.tsx","components/hikmah/use-locale.ts"],
     rules:{"react-hooks/set-state-in-effect":"warn","react-hooks/purity":"warn"},
   },
   {
