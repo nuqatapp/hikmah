@@ -17,6 +17,12 @@ The frontend is deployed by Netlify from `nuqatapp/hikmah`. The game backend is 
 
 No secret belongs in a browser bundle or this document. Supabase needs its existing server-side DB URL and service-role key. Netlify needs its existing private proxy token. `HIKMAH_BACKEND_REGION` optionally overrides the default Frankfurt function routing.
 
+## Signup protection rollout
+
+The production release includes migration `20261122181220_require_verified_email_signup`. Apply it before enabling the Supabase **Before User Created** hook. The migration installs the function and its grants. Enabling the hook is a separate Auth dashboard action.
+
+The signup route needs the matching backend's `signup-guard` resource. The older frontend also omits the client identifier required by the new game-creation limiter. Stage the matching backend alongside the current endpoint and switch the production frontend and its backend URL together, or use a coordinated maintenance window. Verify a fresh guest game and a disposable email signup on the production domain before enabling the hook. Then check email delivery, confirmation, return to the original invite, and a two-account match on the published site. Keep the older endpoint available until those checks are complete.
+
 ## Auth URL and email configuration
 
 The live QA on 14 November 2026 found a confirmation link returning to `localhost:3000`. In Supabase Authentication → URL Configuration, set Site URL to `https://hikmahgame.com`. Allow the production callback and pinned preview URLs, including callback query parameters. The pinned preview pattern is `https://deploy-preview-1--hikmah-wisdom-games.netlify.app/**`; verify a callback containing `?next=` as well as its plain path. Preserve any other verified application callbacks. Do not use an unrestricted external-domain wildcard. The app also forwards root `?code=` returns through its normal PKCE callback, with safe `next` validation.
