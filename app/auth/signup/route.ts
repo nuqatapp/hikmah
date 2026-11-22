@@ -54,7 +54,7 @@ export async function POST(request:Request) {
     if(!stored.ok)console.error('Hikmah signup consent could not be recorded',{status:stored.status});
     if(!data.session){
       const jar=await cookies();
-      jar.set(signupBrowserCookie,user.id,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:86400});
+      jar.set(signupBrowserCookie,JSON.stringify({userId:user.id,next:destination.length<=1500?destination:'/'}),{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:86400});
     }
   }
   // The same response for duplicates avoids revealing registered addresses.

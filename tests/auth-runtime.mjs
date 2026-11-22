@@ -142,7 +142,8 @@ try {
     const solution=await solveChallenge({challenge,deriveKey});
     return Buffer.from(JSON.stringify({challenge,solution})).toString('base64');
   }
-  const created=await signup({...signupBody,altcha:await proof()});
+  const invite='/multiplayer?code=QA-INVITE';
+  const created=await signup({...signupBody,next:invite,altcha:await proof()});
   assert.equal(created.status,200);
   assert.deepEqual(await created.json(),{signedIn:false});
   assert.deepEqual(attestations,[{authUserId:uuid,consent}]);
@@ -171,7 +172,7 @@ try {
   assert.equal(wrongAccount.headers.get('location'),'/login?error=callback');
   assert(!wrongAccount.headers.getSetCookie().some(value=>value.startsWith('sb-127-auth-token=')));
   const automatic=await auto(automaticHash,pendingCookie);
-  assert.equal(automatic.headers.get('location'),'/');
+  assert.equal(automatic.headers.get('location'),invite);
   assert(automatic.headers.getSetCookie().some(value=>value.startsWith('sb-127-auth-token=')));
   const verifiedDashboard=await fetch(origin+'/api/game?action=dashboard',{headers:{Cookie:automatic.headers.getSetCookie().find(value=>value.startsWith('sb-127-auth-token=')).split(';')[0]}});
   assert.equal((await verifiedDashboard.json()).actor.authUserId,uuid);
