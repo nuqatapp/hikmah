@@ -6,6 +6,7 @@ import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 // Exercise the actual Play effect with a delayed transport and controlled timers.
 const dir=mkdtempSync(join(tmpdir(),'hikmah-poll-'));
+globalThis.document=new EventTarget();document.hidden=false;
 const effects=[],updates=[],pending=[],timers=new Map();let index=0,nextTimer=0,calls=0;
 globalThis.__hooks={useState(value){const n=index++;return [n===0?'test-room':value,v=>updates.push([n,v])]},useRef:value=>({current:value}),useCallback:fn=>fn,useEffect:fn=>effects.push(fn)};
 globalThis.__roomApi=()=>{calls++;return new Promise((resolve,reject)=>pending.push({resolve,reject}))};
@@ -14,8 +15,8 @@ globalThis.setTimeout=fn=>{timers.set(++nextTimer,fn);return nextTimer};globalTh
 const flush=async()=>{for(let i=0;i<8;i++)await Promise.resolve()};
 try{
  await build({entryPoints:['components/hikmah/play.tsx'],outfile:join(dir,'play.mjs'),bundle:true,format:'esm',platform:'node',jsx:'automatic',plugins:[{name:'transport-hooks',setup(b){
-  b.onResolve({filter:/^(react|react\/jsx-runtime|lucide-react|\.\/shared|@\/components\/ui\/)/},args=>({path:args.path,namespace:'mock'}));
-  b.onLoad({filter:/.*/,namespace:'mock'},({path})=>({contents:path==='react'?'export const {useState,useRef,useCallback,useEffect}=globalThis.__hooks':path==='react/jsx-runtime'?'export const Fragment="fragment"; export const jsx=()=>null; export const jsxs=jsx':path==='./shared'?'export const api=globalThis.__roomApi; export const gameErrorText=message=>message; export const avatar=()=>null, Loading=()=>null, title=()=>""':`export const ${path==='lucide-react'?'ArrowLeft,ArrowRight,Check,CheckCircle2,Clock,Copy,Delete,Flag,RotateCcw,Trophy':path.endsWith('alert-dialog')?'AlertDialog,AlertDialogAction,AlertDialogCancel,AlertDialogContent,AlertDialogDescription,AlertDialogFooter,AlertDialogHeader,AlertDialogTitle,AlertDialogTrigger':'Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle'} = null;`.replace(/export const (.*) = null;/,(_,names)=>'export const '+names.split(',').map(n=>n+'=()=>null').join(',')+';')}));
+  b.onResolve({filter:/^(react|react\/jsx-runtime|next\/link|lucide-react|\.\/shared|@\/components\/ui\/)/},args=>({path:args.path,namespace:'mock'}));
+  b.onLoad({filter:/.*/,namespace:'mock'},({path})=>({contents:path==='next/link'?'export default ()=>null':path==='react'?'export const {useState,useRef,useCallback,useEffect}=globalThis.__hooks':path==='react/jsx-runtime'?'export const Fragment="fragment"; export const jsx=()=>null; export const jsxs=jsx':path==='./shared'?'export const api=globalThis.__roomApi; export const gameErrorText=message=>message; export const avatar=()=>null, Loading=()=>null, title=()=>""':`export const ${path==='lucide-react'?'ArrowLeft,ArrowRight,Check,CheckCircle2,Clock,Copy,Delete,Flag,RotateCcw,Trophy':path.endsWith('alert-dialog')?'AlertDialog,AlertDialogAction,AlertDialogCancel,AlertDialogContent,AlertDialogDescription,AlertDialogFooter,AlertDialogHeader,AlertDialogTitle,AlertDialogTrigger':'Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle'} = null;`.replace(/export const (.*) = null;/,(_,names)=>'export const '+names.split(',').map(n=>n+'=()=>null').join(',')+';')}));
  }}]});
  const {Play}=await import(pathToFileURL(join(dir,'play.mjs')).href);Play({t:x=>x,locale:'en',refresh(){}});
  const cleanup=effects[1]();assert.equal(calls,1);assert.equal(timers.size,0,'slow responses must not overlap with new polls');
@@ -27,5 +28,14 @@ try{
  const [id2,tick2]=timers.entries().next().value;timers.delete(id2);tick2();cleanup();
  const before=updates.length;pending.shift().resolve({serverTime:Date.now(),marker:'after-unmount'});await flush();
  assert.equal(updates.length,before,'unmounted room ignores late response');assert.equal(timers.size,0);
+ index=0;Play({t:x=>x,locale:'en',refresh(){}});
+ const lastPoll=effects.at(-3)();
+ pending.shift().reject(Object.assign(new Error('Room not found.'),{status:404}));await flush();
+ assert.equal(timers.size,0,'terminal room errors stop polling');
+ lastPoll();
+ index=0;document.hidden=true;Play({t:x=>x,locale:'en',refresh(){}});
+ const hiddenCleanup=effects.at(-3)();assert.equal(pending.length,0);
+ document.hidden=false;document.dispatchEvent(new Event('visibilitychange'));assert.equal(pending.length,1);
+ hiddenCleanup();pending.shift().resolve({serverTime:Date.now()});await flush();
  console.log('Passed: delayed room responses render, no overlapping polling, recovery after disconnect, cleanup ignores stale responses.');
 }finally{globalThis.setTimeout=realSet;globalThis.clearTimeout=realClear;delete globalThis.__hooks;delete globalThis.__roomApi;rmSync(dir,{recursive:true,force:true})}

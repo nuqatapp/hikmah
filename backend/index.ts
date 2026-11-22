@@ -11,7 +11,7 @@ import * as game from './game-route';
 import * as avatar from './avatar-route';
 import {finishErasure,runPrivacyMaintenance} from './privacy-jobs';
 
-export const BACKEND_VERSION='2026-11-22-guard';
+export const BACKEND_VERSION='2026-11-22-integrity';
 
 function validActor(value: any): value is Actor {
   return value && typeof value.id === 'string' && value.id.length > 0 && value.id.length <= 200 &&

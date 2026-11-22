@@ -1,3 +1,4 @@
+import {gameErrors} from './errors';
 import type {Locale} from './rules';
 
 const clientErrors=[
@@ -8,7 +9,7 @@ const clientErrors=[
 
 // Stored errors must follow a later language switch without resending a game move.
 export function gameErrorText(message:string,t:(en:string,ar:string)=>string){
- const known=clientErrors.find(([en,ar])=>message===en||message===ar);
+ const known=[...clientErrors,...Object.values(gameErrors)].find(([en,ar])=>message===en||message===ar);
  return known?t(known[0],known[1]):message;
 }
 
@@ -26,6 +27,9 @@ export async function gameApi(action:string,body?:Record<string,unknown>,query?:
  if(response.status>=500)throw new Error(unavailable());
  let data;
  try{data=await response.json()}catch{throw new Error(unavailable())}
- if(!response.ok)throw new Error(data?.error||(ar()?'تعذر تنفيذ الطلب. حاول مرة أخرى.':'Could not complete the request. Please try again.'));
+ if(!response.ok){
+   const translated=typeof data?.code==='string'&&Object.hasOwn(gameErrors,data.code)?gameErrors[data.code as keyof typeof gameErrors]:undefined;
+   throw Object.assign(new Error(translated?.[0]||data?.error||(ar()?'تعذر تنفيذ الطلب. حاول مرة أخرى.':'Could not complete the request. Please try again.')),{status:response.status,code:data?.code});
+ }
  return data;
 }

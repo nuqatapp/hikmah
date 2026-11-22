@@ -31,6 +31,25 @@ export function AuthForm({configured, google, next, reset = false, callbackError
   const [busy, setBusy] = useState(false);
   const [signupEmail,setSignupEmail]=useState('');
   const [captchaAttempt,setCaptchaAttempt]=useState(0);
+  const [resendUntil,setResendUntil]=useState(0);
+  const [resendStatus,setResendStatus]=useState<'sent'|'failed'|null>(null);
+  useEffect(()=>{
+    if(!resendUntil)return;
+    const timeout=setTimeout(()=>setResendUntil(0),Math.max(0,resendUntil-Date.now()));
+    return ()=>clearTimeout(timeout);
+  },[resendUntil]);
+  async function resend(){
+    if(busy||resendUntil)return;
+    setBusy(true);setResendStatus(null);
+    try{
+      const callback=new URL('/auth/callback',location.origin);
+      callback.searchParams.set('next',safeNext(next));
+      const {error}=await browserAuth().auth.resend({type:'signup',email:signupEmail,options:{emailRedirectTo:callback.toString()}});
+      if(error)throw error;
+      setResendStatus('sent');
+    }catch{setResendStatus('failed')}
+    finally{setResendUntil(Date.now()+60_000);setBusy(false)}
+  }
   const heading=useRef<HTMLHeadingElement>(null);
   useEffect(()=>{if(signupEmail)heading.current?.focus()},[signupEmail]);
   const [message, setMessage] = useState(callbackError ? 'We could not complete sign-in from this link. If you already confirmed your email, sign in below with your password. Otherwise request a new link.' : '');
@@ -52,7 +71,7 @@ export function AuthForm({configured, google, next, reset = false, callbackError
         const result=await response.json();
         if(!response.ok)throw Object.assign(new Error(result.error),{code:result.code});
         if(result.signedIn){window.location.assign(safeNext(next));return}
-        setSignupEmail(email);
+        setSignupEmail(email);setResendStatus(null);setResendUntil(Date.now()+60_000);
         return;
       }
       const client = browserAuth();
@@ -99,6 +118,8 @@ export function AuthForm({configured, google, next, reset = false, callbackError
       <p>{t('Open the Hikmah email sent to','افتح رسالة حكمة المرسلة إلى')} <bdi>{signupEmail}</bdi> {t('and select “Confirm email.”','واضغط «تأكيد البريد».')}</p>
       <p className="muted">{t('Check your spam folder if the email doesn’t arrive. If you already have an account, sign in below.','إذا لم تصلك الرسالة، فتحقق من البريد غير المرغوب فيه. إذا كان لديك حساب، فسجّل الدخول أدناه.')}</p>
       <button type="button" className="btn outline" onClick={()=>change('signin')}>{t('Back to sign in','العودة إلى تسجيل الدخول')}</button>
+      <button type="button" className="btn outline" disabled={busy||!!resendUntil} onClick={resend}>{t('Resend confirmation email','إعادة إرسال رسالة التأكيد')}</button>
+      {resendStatus&&<p role={resendStatus==='failed'?'alert':'status'}>{resendStatus==='sent'?t('If confirmation is still pending, check your inbox for a new link.','إذا كان التأكيد لا يزال معلقًا، تحقق من بريدك لرابط جديد.'):t('Could not resend the email. Try again in a minute.','تعذّر إعادة الإرسال. حاول مجددًا بعد دقيقة.')}</p>}
       <button type="button" className="back-link" onClick={()=>change('signup')}>{t('Use a different email','استخدم بريدًا إلكترونيًا آخر')}</button>
     </> : <>
     <h1 style={{fontSize:'2.3rem'}}>{titles[mode]}</h1>
