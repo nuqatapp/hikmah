@@ -24,7 +24,7 @@ export function StartGameError({error,t,active}:{error:string;t:Props['t'];activ
 export {gameApi as api,gameErrorText} from '@/lib/game/transport';
 export function title(k:Kind,l:Locale){return {letters:l==='ar'?'الحروف الناقصة':'Missing Letters',mcq:l==='ar'?'اختيار من متعدد':'Multiple Choice',cryptogram:l==='ar'?'الشفرة':'Cryptogram'}[k]}
 export function avatar(p:{name:string;avatar?:string|null}){return p.avatar?<img className="avatar" src={'/api/avatar?key='+encodeURIComponent(p.avatar)} alt=""/>:<span className="avatar">{p.name?.slice(0,1).toUpperCase()||'H'}</span>}
-export function Loading(){return <div className="panel" role="status" aria-label="Loading"><div className="skeleton" style={{width:'40%'}}/><div className="skeleton"/><div className="skeleton" style={{width:'70%'}}/></div>}
+export function Loading({t}:{t:Props['t']}){return <div className="panel" role="status" aria-label={t("Loading","جارٍ التحميل")}><div className="skeleton" style={{width:'40%'}}/><div className="skeleton"/><div className="skeleton" style={{width:'70%'}}/></div>}
 export function Picker({value,onChange,items,label}:{value:string;onChange:(v:string)=>void;items:[string,string][];label:string}){return <Select value={value} onValueChange={onChange}><SelectTrigger aria-label={label}><SelectValue/></SelectTrigger><SelectContent>{items.map(([v,t])=><SelectItem key={v} value={v}>{t}</SelectItem>)}</SelectContent></Select>}
 export function PuzzleLanguagePicker({t,puzzleLanguage,changePuzzleLanguage}:Pick<Props,'t'|'puzzleLanguage'|'changePuzzleLanguage'>){
  return <Picker label={t('Puzzle language','لغة الألغاز')} value={puzzleLanguage}

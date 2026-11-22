@@ -1707,7 +1707,7 @@ async function leaveRoom(id, user) {
   else if (r.host === user) await run("UPDATE rooms SET host=? WHERE id=?", other.user, id);
 }
 async function advance(id, user, manual = false) {
-  let r = await memberRoom(id, user);
+  const r = await memberRoom(id, user);
   const t = now();
   await run("UPDATE members SET last_seen=? WHERE room=? AND user=? AND last_seen<?", t, id, user, t - (r.mode === "multi" ? 5e3 : 36e5));
   if (r.mode === "multi") await run("UPDATE rooms SET host=? WHERE id=? AND host!=? AND EXISTS(SELECT 1 FROM members WHERE room=? AND user=rooms.host AND (last_seen<? OR left_at IS NOT NULL))", user, id, user, id, t - 45e3);

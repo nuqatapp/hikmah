@@ -1,12 +1,12 @@
 # Hikmah deployment
 
-Verified on 2026-09-19.
+Production pointers verified on 2026-11-22. The verification and credential history below dates to September 2026.
 
-- Live site: https://hikmah-wisdom-games.netlify.app
-- Netlify project: hikmah-wisdom-games, bfba38b2-602d-4890-8048-d6c6a0e4f7ea, Free plan.
-- Production deploy: 6aae7e1d47501716d971cf38, ready.
+- Live site: https://hikmahgame.com
+- Netlify project: hikmah-wisdom-games, bfba38b2-602d-4890-8048-d6c6a0e4f7ea.
+- Production deploy: 6afebc95a1b7bd7f3439f923, ready.
 - Public source: https://github.com/nuqatapp/hikmah, main. Publication was explicitly approved by the owner.
-- Supabase: vilgghdzyqdsvbaazphh, private hikmah schema, hikmah-api Edge Function version 3.
+- Supabase: vilgghdzyqdsvbaazphh, private hikmah schema, hikmah-api Edge Function version 6. The deployed game API reports `2026-11-19-signup` until the integrity release is deployed.
 
 ## Working and verified
 
@@ -32,11 +32,10 @@ References: https://docs.netlify.com/build/environment-variables/overview/ and h
 
 ## Remaining setup
 
-1. Supabase Auth URL Configuration: set Site URL to https://hikmah-wisdom-games.netlify.app and allow https://hikmah-wisdom-games.netlify.app/auth/callback**. Keep the redirect pattern restricted to the exact host; the suffix includes password recovery query strings.
+1. Supabase Auth URL Configuration: set Site URL to https://hikmahgame.com and allow https://hikmahgame.com/auth/callback**. Keep the redirect pattern restricted to the exact host; the suffix includes password recovery query strings.
 2. Google sign-in: configure the owner's Google Cloud OAuth Client ID and Client Secret in Supabase. Google callback: https://vilgghdzyqdsvbaazphh.supabase.co/auth/v1/callback. Keep the secret out of frontend code and GitHub.
 3. Configure production SMTP for confirmation and recovery emails. Keep email confirmation enabled.
 4. After the owner creates a verified account, explicitly link the existing legacy profile through profiles.auth_user_id without replacing its game data. New signups never become administrators automatically.
-5. Connect Netlify continuous deployment to nuqatapp/hikmah, main. The current source-upload deployments do not establish this connection.
-6. Obtain the intended game domain, add it to this Netlify project, configure DNS, and update Supabase's Site URL and redirect allowlist. The existing nuqat.app website belongs to a different Netlify project and must not be replaced without an explicit decision. No database migration is needed when the frontend domain changes.
+5. Netlify builds production from `nuqatapp/hikmah` on `main` and builds Deploy Previews for pull requests. Review the preview and follow the [coordinated release procedure](docs/OPERATIONS.md#coordinated-release) for backend changes.
 
-Supabase's plugin does not expose Auth URL, Google provider, or SMTP configuration. These dashboard changes have not been applied. The previous browser sign-in was not completed; do not imply that the plugin's working database access also authenticates the dashboard browser.
+Supabase's plugin does not expose Auth URL, Google provider, or SMTP configuration. Verify the current auth settings in the Supabase dashboard before changing them.
