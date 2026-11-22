@@ -10,6 +10,11 @@ NEXT_TELEMETRY_DISABLED = "1"
 [[plugins]]
 package = "@netlify/plugin-nextjs"
 
+[[headers]]
+for = "/assets/fonts/*.woff2"
+[headers.values]
+Cache-Control = "public, max-age=604800"
+
 # Configure HIKMAH_BACKEND_URL and HIKMAH_BACKEND_TOKEN in Netlify's
 # environment settings. Keep the token marked secret and production-only.
 # Approved Free-plan secret scopes: builds, functions, runtime (not post_processing).

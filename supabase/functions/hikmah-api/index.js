@@ -5,7 +5,7 @@ var __export = (target, all) => {
 };
 
 // backend/index.ts
-import { env as env3 } from "node:process";
+import { createHash } from "node:crypto";
 
 // db/raw.ts
 import postgres from "postgres";
@@ -1654,7 +1654,7 @@ async function leaveRoom(id, user) {
 async function advance(id, user, manual = false) {
   let r = await memberRoom(id, user);
   const t = now();
-  if (r.mode === "multi") await run("UPDATE members SET last_seen=? WHERE room=? AND user=? AND last_seen<?", t, id, user, t - 5e3);
+  await run("UPDATE members SET last_seen=? WHERE room=? AND user=? AND last_seen<?", t, id, user, t - (r.mode === "multi" ? 5e3 : 36e5));
   if (r.mode === "multi") await run("UPDATE rooms SET host=? WHERE id=? AND host!=? AND EXISTS(SELECT 1 FROM members WHERE room=? AND user=rooms.host AND (last_seen<? OR left_at IS NOT NULL))", user, id, user, id, t - 45e3);
   if (r.status !== "active") return;
   let rd = await one("SELECT * FROM rounds WHERE room=? AND number=?", id, r.round);
@@ -1681,8 +1681,8 @@ async function roomState(id, u) {
   let round = null;
   if (rd) {
     const s = JSON.parse(rd.snapshot);
-    const attempt = await one("SELECT correct FROM attempts WHERE round=? AND user=?", rd.id, u.id);
-    round = { id: rd.id, number: rd.number, startedAt: rd.started_at, endedAt: rd.ended_at, winner: rd.winner, outcome: rd.outcome, puzzle: publicPuzzle(s), solution: rd.ended_at ? solution(s) : null, explanation: rd.ended_at ? s.explanation : null, submitted: !!attempt && r.kind === "mcq", deadline: r.mode === "multi" ? rd.started_at + ROUND_SECONDS[r.kind] * 1e3 : null };
+    const attempt = await one("SELECT correct,answer FROM attempts WHERE round=? AND user=?", rd.id, u.id);
+    round = { id: rd.id, number: rd.number, startedAt: rd.started_at, endedAt: rd.ended_at, winner: rd.winner, outcome: rd.outcome, puzzle: publicPuzzle(s), solution: rd.ended_at ? solution(s) : null, explanation: rd.ended_at ? s.explanation : null, submitted: !!attempt && r.kind === "mcq", submittedChoice: attempt && r.kind === "mcq" && /^\d+$/.test(attempt.answer) ? Number(attempt.answer) : null, correctChoice: r.kind === "mcq" && rd.ended_at ? Number(s.answer) : null, deadline: r.mode === "multi" ? rd.started_at + ROUND_SECONDS[r.kind] * 1e3 : null };
   }
   return { room: { id: r.id, code: r.code, kind: r.kind, locale: r.locale, mode: r.mode, status: r.status, host: r.host, total: r.total }, round, players, serverTime: now(), me: u.id, profile: u.signed ? await profile(u.id) : null, history: await many("SELECT number,winner,outcome,ended_at FROM rounds WHERE room=? AND ended_at IS NOT NULL ORDER BY number", id) };
 }
@@ -1722,6 +1722,26 @@ async function dashboard(u) {
   const p = await ensureProfile(u);
   return { profile: p, signedIn: u.signed, stats: u.signed ? await one("SELECT COUNT(*) AS answered,COALESCE(SUM(correct),0) AS correct FROM attempts WHERE user=?", u.id) : null, active: await many("SELECT r.id,r.kind,r.mode,r.code FROM rooms r JOIN members m ON m.room=r.id WHERE m.user=? AND m.left_at IS NULL AND r.status IN ('waiting','active') AND (r.mode='solo' OR ?=1) ORDER BY r.created_at DESC", u.id, u.signed ? 1 : 0), counts: await many("SELECT kind,locale,COUNT(*) AS n FROM content WHERE active=1 GROUP BY kind,locale") };
 }
+
+// backend/request-guard.ts
+async function reserveRequest(op, client, proof, now2 = Date.now()) {
+  if (!client || !/^[a-f0-9]{64}$/.test(client)) return Response.json({ error: "Request verification unavailable." }, { status: 503 });
+  const size = 3600, hour = Math.floor(now2 / (size * 1e3)), limit = op === "signup" ? 3 : 12;
+  const counter = "guard:" + new Date(now2).toISOString().slice(0, 10) + ":" + op + ":" + hour + ":" + client;
+  const row = await one(`INSERT INTO site_settings(key,value) VALUES(?,'1')
+    ON CONFLICT(key) DO UPDATE SET value=CAST(CAST(site_settings.value AS INTEGER)+1 AS TEXT)
+    WHERE CAST(site_settings.value AS INTEGER)<? RETURNING value`, counter, limit);
+  if (!row) return Response.json({ code: "over_request_rate_limit", error: "Too many requests. Try again later." }, { status: 429, headers: { "Retry-After": String(size - Math.floor(now2 / 1e3) % size) } });
+  if (op === "signup") {
+    if (!proof || !/^[a-f0-9]{64}$/.test(proof)) return Response.json({ code: "captcha", error: "Complete verification again." }, { status: 400 });
+    const used = await one("INSERT INTO site_settings(key,value) VALUES(?,?) ON CONFLICT(key) DO NOTHING RETURNING value", "proof:" + proof, String(now2));
+    if (!used) return Response.json({ code: "captcha", error: "Complete verification again." }, { status: 400 });
+  }
+  return null;
+}
+
+// backend/index.ts
+import { env as env3 } from "node:process";
 
 // lib/policy.ts
 var ACCOUNT_POLICY_VERSION = "2026-11-13";
@@ -2035,6 +2055,11 @@ async function runPrivacyMaintenance(sql) {
   for (const job of jobs) if (await finishErasure(sql, job.auth_user_id)) completed++;
   const cutoff = Date.now() - 30 * 864e5;
   await withDatabase(sql, async () => {
+    await run("DELETE FROM site_settings WHERE key LIKE 'guard:%' AND key<?", "guard:" + new Date(Date.now() - 864e5).toISOString().slice(0, 10));
+    await run("DELETE FROM site_settings WHERE key LIKE 'proof:%' AND value<?", String(Date.now() - 864e5));
+    await run("DELETE FROM site_settings WHERE key LIKE 'admit:%' AND value<?", String(Date.now()));
+    const unusedCutoff = Date.now() - 864e5;
+    await run("DELETE FROM rooms WHERE substr(host,1,2)='g_' AND mode='solo' AND updated_at<? AND NOT EXISTS(SELECT 1 FROM members m WHERE m.room=rooms.id AND m.last_seen>=?) AND NOT EXISTS(SELECT 1 FROM rounds r JOIN attempts a ON a.round=r.id WHERE r.room=rooms.id)", unusedCutoff, unusedCutoff);
     await run("DELETE FROM rooms WHERE substr(host,1,2)='g_' AND mode='solo' AND updated_at<? AND NOT EXISTS(SELECT 1 FROM rounds r JOIN attempts a ON a.round=r.id WHERE r.room=rooms.id AND a.created_at>=?)", cutoff, cutoff);
     await run("DELETE FROM attempts WHERE substr(user,1,2)='g_' AND created_at<?", cutoff);
     await run("DELETE FROM account_erasure_jobs WHERE status='completed' AND completed_at<?", cutoff);
@@ -2043,7 +2068,7 @@ async function runPrivacyMaintenance(sql) {
 }
 
 // backend/index.ts
-var BACKEND_VERSION = "2026-11-19-signup";
+var BACKEND_VERSION = "2026-11-22-guard";
 function validActor(value) {
   return value && typeof value.id === "string" && value.id.length > 0 && value.id.length <= 200 && typeof value.name === "string" && value.name.length <= 200 && typeof value.signed === "boolean" && (value.signed ? !value.id.startsWith("g_") : /^g_[a-f0-9-]{36}$/.test(value.id)) && (value.authUserId === void 0 || value.signed && typeof value.authUserId === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value.authUserId) && value.id === "sb_" + value.authUserId);
 }
@@ -2060,6 +2085,18 @@ async function handleBackend(request) {
     const resource = url.searchParams.get("resource");
     const method = url.searchParams.get("method");
     if (resource === "maintenance" && method === "POST") return Response.json(await runPrivacyMaintenance(sql));
+    if (resource === "signup-guard" && method === "POST") {
+      const { email } = await request.json();
+      if (typeof email !== "string" || email.length > 254) return Response.json({ error: "Invalid email." }, { status: 400 });
+      return withDatabase(sql, async () => {
+        const blocked = await reserveRequest("signup", request.headers.get("x-hikmah-client"), request.headers.get("x-hikmah-proof"));
+        if (blocked) return blocked;
+        const ticket = crypto.randomUUID();
+        const digest = createHash("sha256").update(email.trim().toLowerCase() + ":" + ticket).digest("hex");
+        await run("INSERT INTO site_settings(key,value) VALUES(?,?)", "admit:" + digest, String(Date.now() + 3e5));
+        return Response.json({ ticket });
+      });
+    }
     if (resource === "signup-consent" && method === "POST") {
       const body2 = await request.text();
       if (body2.length > 4096) return Response.json({ error: "Request too large." }, { status: 413 });
@@ -2093,6 +2130,10 @@ async function handleBackend(request) {
       } catch {
         return Response.json({ error: "Invalid request." }, { status: 400 });
       }
+    }
+    if (operation === "create") {
+      const blocked = await withDatabase(sql, () => reserveRequest("create", request.headers.get("x-hikmah-client")));
+      if (blocked) return blocked;
     }
     const actorHeader = request.headers.get("x-hikmah-actor");
     let actor;

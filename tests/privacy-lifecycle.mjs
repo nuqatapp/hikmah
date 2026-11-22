@@ -25,7 +25,7 @@ globalThis.__bucket={delete:async()=>{storageDeletes++;if(storageFailure)throw n
 const originalFetch=globalThis.fetch;
 globalThis.fetch=async(url,options)=>{assert.equal(options.method,'DELETE');assert.match(String(url),/\/auth\/v1\/admin\/users\/[a-f0-9-]+$/);authDeletes++;return new Response('{}',{status:authFailure?503:200})};
 process.env.SUPABASE_URL='https://test.invalid';process.env.SUPABASE_SERVICE_ROLE_KEY='test-only-key';
-await build({stdin:{contents:`export * from './lib/game/service';export * from './lib/game/privacy';export * from './backend/privacy-jobs';export * as routes from './backend/game-route';export {NextRequest} from './backend/http';export {ACCOUNT_POLICY_VERSION} from './lib/policy';`,resolveDir:process.cwd()},outfile:join(dir,'privacy.mjs'),bundle:true,platform:'node',format:'esm',plugins:[{name:'test-adapters',setup(b){
+await build({stdin:{contents:`export * from './lib/game/service';export * from './lib/game/privacy';export * from './backend/privacy-jobs';export * from './backend/request-guard';export * as routes from './backend/game-route';export {NextRequest} from './backend/http';export {ACCOUNT_POLICY_VERSION} from './lib/policy';`,resolveDir:process.cwd()},outfile:join(dir,'privacy.mjs'),bundle:true,platform:'node',format:'esm',plugins:[{name:'test-adapters',setup(b){
  b.onResolve({filter:/^@\/db\/raw$|^\.\.\/db\/raw$/},()=>({path:'database',namespace:'mock'}));
  b.onResolve({filter:/^\.\/actor$/},()=>({path:'actor',namespace:'mock'}));
  b.onLoad({filter:/.*/,namespace:'mock'},({path})=>({contents:path==='actor'?'export async function identity(){return globalThis.__actor}':'export function database(){return globalThis.__db} export function bucket(){return globalThis.__bucket} export async function withDatabase(sql,work){return work()}'}));
@@ -88,6 +88,15 @@ try{
  await s.run('UPDATE rooms SET updated_at=? WHERE id=?',old,namedLegacy.id);
  await s.run('UPDATE attempts SET created_at=? WHERE user=?',old,legacyG.id);
  await s.run('INSERT INTO storage_deletion_jobs(path,requested_at) VALUES(?,?)','avatars/old.png',old);
+ const twoDaysAgo=Date.now()-2*86400_000;
+ await s.run('UPDATE rooms SET updated_at=? WHERE id=?',twoDaysAgo,oldGuest.id);
+ await s.run('UPDATE members SET last_seen=? WHERE room=?',twoDaysAgo,oldGuest.id);
+ const client='a'.repeat(64);
+ for(let i=0;i<12;i++)assert.equal(await s.reserveRequest('create',client),null);
+ assert.equal((await s.reserveRequest('create',client)).status,429);
+ for(let i=1;i<=3;i++)assert.equal(await s.reserveRequest('signup',client,String(i).repeat(64)),null);
+ assert.equal((await s.reserveRequest('signup',client,'4'.repeat(64))).status,429);
+ assert.equal((await s.reserveRequest('signup','b'.repeat(64),'1'.repeat(64))).status,400,'proof cannot be reused from another IP');
  const maintenance=await s.runPrivacyMaintenance({});assert.equal(maintenance.storageJobsCompleted,1);
  assert.equal(await s.one('SELECT id FROM rooms WHERE id=?',oldGuest.id),null,'expired guest game is purged');
  assert(await s.one('SELECT id FROM rooms WHERE id=?',legacy.id),'signed-in game is preserved');

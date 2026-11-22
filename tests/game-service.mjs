@@ -44,7 +44,12 @@ let raceState=await s.roomState(race.id,a),raceRound=await s.one('SELECT * FROM 
 const competing=await Promise.all([s.submit(race.id,raceRound.id,correctAnswer,a),s.submit(race.id,raceRound.id,correctAnswer,b)]);assert.equal(competing.filter(x=>x.correct).length,1);assert.equal((await s.one('SELECT COUNT(*) n FROM wallet WHERE id=?','reward:'+raceRound.id)).n,1);await s.leaveRoom(race.id,a.id);await s.leaveRoom(race.id,b.id);
 // Wrong quiz answers lock the user out, then a timeout advances the match.
 const wrong=await s.createRoom('mcq','en','multi',a);await s.joinRoom(wrong.code,b);await s.startRoom(wrong.id,a.id);clock+=4000;let st=await s.roomState(wrong.id,a),rd=await s.one('SELECT * FROM rounds WHERE id=?',st.round.id),snap=JSON.parse(rd.snapshot);
-await s.submit(wrong.id,rd.id,(Number(snap.answer)+1)%snap.choices.length,a);await assert.rejects(()=>s.submit(wrong.id,rd.id,Number(snap.answer),a),/already answered/);clock+=50000;st=await s.roomState(wrong.id,b);assert.equal(st.round.outcome,'timeout');clock+=6100;st=await s.roomState(wrong.id,b);assert.equal(st.round.number,2);assert.equal(st.room.host,b.id,'host failover');await s.leaveRoom(wrong.id,a.id);await s.leaveRoom(wrong.id,b.id);
+const wrongIndex=(Number(snap.answer)+1)%snap.choices.length;
+await s.submit(wrong.id,rd.id,wrongIndex,a);
+assert.equal((await s.roomState(wrong.id,a)).round.submittedChoice,wrongIndex);
+assert.equal((await s.roomState(wrong.id,b)).round.submittedChoice,null);
+assert.equal((await s.roomState(wrong.id,a)).round.correctChoice,null);
+await assert.rejects(()=>s.submit(wrong.id,rd.id,Number(snap.answer),a),/already answered/);clock+=50000;st=await s.roomState(wrong.id,b);assert.equal(st.round.outcome,'timeout');assert.equal(st.round.correctChoice,Number(snap.answer));clock+=6100;st=await s.roomState(wrong.id,b);assert.equal(st.round.number,2);assert.equal(st.room.host,b.id,'host failover');await s.leaveRoom(wrong.id,a.id);await s.leaveRoom(wrong.id,b.id);
 // Skip charging is atomic and cannot repeat.
 const skip=await s.createRoom('letters','en','solo',b);st=await s.roomState(skip.id,b);let balance=(await s.profile(b.id)).balance;await s.submit(skip.id,st.round.id,null,b,true);await s.submit(skip.id,st.round.id,null,b,true);assert.equal((await s.profile(b.id)).balance,balance-5);await s.leaveRoom(skip.id,b.id);
 // Guest play works without a wallet and cannot access someone else's game.

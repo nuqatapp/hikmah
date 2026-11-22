@@ -1,3 +1,5 @@
+import {solveChallenge} from 'altcha-lib';
+import {deriveKey} from 'altcha-lib/algorithms/pbkdf2';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {spawn} from 'node:child_process';
@@ -30,7 +32,7 @@ const mock = createServer(async (request,response) => {
     signups++;
     let body='';for await(const chunk of request)body+=chunk;
     const input=JSON.parse(body);
-    assert.deepEqual(input.data,{full_name:'Player'});
+    assert.deepEqual(input.data,{full_name:'Player',hikmah_signup_ticket:uuid});
     response.end(JSON.stringify({...user,email:input.email,email_confirmed_at:null,identities:input.email.startsWith('existing')?[]:[{id:uuid,provider:'email'}]}));return;
   }
   if(request.url==='/auth/v1/verify') {
@@ -47,6 +49,11 @@ const mock = createServer(async (request,response) => {
     response.end(JSON.stringify(session));return;
   }
   if(request.url.startsWith('/backend')) {
+    if(new URL(request.url,'http://localhost').searchParams.get('resource')==='signup-guard'){
+      assert.match(request.headers['x-hikmah-proof'],/^[0-9a-f]{64}$/);
+      assert.match(request.headers['x-hikmah-client'],/^[0-9a-f]{64}$/);
+      response.end(JSON.stringify({ticket:uuid}));return;
+    }
     if(new URL(request.url,'http://localhost').searchParams.get('resource')==='signup-consent'){
       assert(!request.headers['x-hikmah-actor']);
       assert.equal(request.headers['x-hikmah-server-token'],'a'.repeat(64));
@@ -128,7 +135,14 @@ try {
   assert.equal((await signup(signupBody,'https://evil.invalid')).status,403);
   assert.equal((await signup({...signupBody,consent:{...consent,childDataConsent:false}})).status,400);
   assert.equal(signups,0,'invalid requests must not create Auth users');
-  const created=await signup(signupBody);
+  assert.equal((await signup(signupBody)).status,400,'unverified signup is rejected');
+  assert.equal(signups,0);
+  async function proof(){
+    const challenge=await (await fetch(origin+'/auth/challenge')).json();
+    const solution=await solveChallenge({challenge,deriveKey});
+    return Buffer.from(JSON.stringify({challenge,solution})).toString('base64');
+  }
+  const created=await signup({...signupBody,altcha:await proof()});
   assert.equal(created.status,200);
   assert.deepEqual(await created.json(),{signedIn:false});
   assert.deepEqual(attestations,[{authUserId:uuid,consent}]);
@@ -136,7 +150,7 @@ try {
   assert.match(marker,/HttpOnly/i);
   assert.match(marker,/Secure/i);
   const pendingCookie=marker.split(';')[0];
-  const duplicate=await signup({...signupBody,email:'existing@example.invalid'});
+  const duplicate=await signup({...signupBody,altcha:await proof(),email:'existing@example.invalid'});
   assert.deepEqual(await duplicate.json(),{signedIn:false});
   assert.equal(attestations.length,1,'an obfuscated duplicate must not record consent');
   assert(!duplicate.headers.getSetCookie().some(value=>value.startsWith('__Host-hikmah_signup=')));

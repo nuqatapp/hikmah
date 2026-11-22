@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useRef,useState, type FormEvent} from 'react';
+import {SignupCaptcha} from './signup-captcha';
 import Link from 'next/link';
 import {browserAuth} from '@/lib/supabase/client';
 import {safeNext} from '@/lib/supabase/config';
@@ -16,6 +17,7 @@ function authMessage(code:string,fallback:string,t:(en:string,ar:string)=>string
  if(code==='callback')return t('We could not complete sign-in from this link. If you already confirmed your email, sign in below with your password. Otherwise request a new link.','تعذر إكمال الدخول من هذا الرابط. إذا أكدت بريدك بالفعل، سجل الدخول أدناه بكلمة مرورك. وإلا فاطلب رابطًا جديدًا.');
  if(code==='reset_sent')return t('If an account exists, a password reset link has been sent.','إذا كان الحساب موجودًا، فستصلك رسالة لإعادة تعيين كلمة المرور.');
  if(code==='signup_consent')return t('Accept the account terms and provide the required consent.','وافق على شروط الحساب وقدّم الموافقة المطلوبة.');
+ if(code==='captcha')return t('Complete verification again.','أكمل التحقق مجددًا.');
  if(code==='signup_fields')return t('Enter a nickname, email and password of at least 12 characters.','أدخل اسمًا مستعارًا وبريدًا إلكترونيًا وكلمة مرور من ١٢ حرفًا على الأقل.');
  if(code==='network')return t('Could not connect to sign-in. Check your connection and try again.','تعذر الاتصال بخدمة الدخول. تحقق من اتصالك وحاول مرة أخرى.');
  return fallback;
@@ -28,6 +30,7 @@ export function AuthForm({configured, google, next, reset = false, callbackError
   const [mode, setMode] = useState<Mode>(reset ? 'reset' : initialMode);
   const [busy, setBusy] = useState(false);
   const [signupEmail,setSignupEmail]=useState('');
+  const [captchaAttempt,setCaptchaAttempt]=useState(0);
   const heading=useRef<HTMLHeadingElement>(null);
   useEffect(()=>{if(signupEmail)heading.current?.focus()},[signupEmail]);
   const [message, setMessage] = useState(callbackError ? 'We could not complete sign-in from this link. If you already confirmed your email, sign in below with your password. Otherwise request a new link.' : '');
@@ -44,7 +47,7 @@ export function AuthForm({configured, google, next, reset = false, callbackError
       if(mode==='signup'){
         const response=await fetch('/auth/signup',{
           method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({email,password,name:String(form.get('name')||''),next,consent:consentFromForm(form)}),
+          body:JSON.stringify({email,password,altcha:form.get('altcha'),name:String(form.get('name')||''),next,consent:consentFromForm(form)}),
         });
         const result=await response.json();
         if(!response.ok)throw Object.assign(new Error(result.error),{code:result.code});
@@ -75,7 +78,7 @@ export function AuthForm({configured, google, next, reset = false, callbackError
       const code=(error as {code?:unknown})?.code;
       setMessageCode(typeof code==='string'?code:error instanceof TypeError?'network':'');
       setMessage(error instanceof Error ? error.message : t('Please try again.', 'حاول مرة أخرى.'));
-    } finally { setBusy(false); }
+    } finally { if(mode==='signup')setCaptchaAttempt(n=>n+1);setBusy(false); }
   }
   async function withGoogle() {
     setBusy(true); setMessage(''); setMessageCode(''); setFailed(false);
@@ -109,7 +112,7 @@ export function AuthForm({configured, google, next, reset = false, callbackError
         {mode !== 'reset' && <label className="field">{t('Email', 'البريد الإلكتروني')}<input name="email" type="email" dir="ltr" autoComplete="email" required maxLength={254}/></label>}
         {mode !== 'forgot' && <label className="field">{t('Password', 'كلمة المرور')}<input name="password" type="password" dir="ltr" autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} required minLength={mode === 'signin' ? 1 : 12} maxLength={128}/>{mode !== 'signin' && <span className="muted">{t('At least 12 characters.', '١٢ حرفًا على الأقل.')}</span>}</label>}
         {mode === 'reset' && <label className="field">{t('Confirm password', 'تأكيد كلمة المرور')}<input name="confirm" type="password" autoComplete="new-password" dir="ltr" required minLength={12} maxLength={128}/></label>}
-        {mode==='signup'&&<AccountConsentFields t={t}/>}
+        {mode==='signup'&&<><AccountConsentFields t={t}/><SignupCaptcha key={captchaAttempt} arabic={arabic}/></>}
         {message && <p role={failed ? 'alert' : 'status'} className={'notice' + (failed ? ' error' : '')}>{authMessage(messageCode,message,t)}</p>}
         <button className="btn" disabled={busy}>{busy ? t('Please wait...', 'يرجى الانتظار...') : mode === 'signup' ? t('Create account', 'إنشاء حساب') : mode === 'forgot' ? t('Send reset link', 'إرسال رابط الاستعادة') : mode === 'reset' ? t('Save password', 'حفظ كلمة المرور') : t('Sign in', 'تسجيل الدخول')}</button>
       </form>

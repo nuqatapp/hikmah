@@ -1,3 +1,4 @@
+import {verifySignupChallenge} from '@/lib/signup-challenge';
 import {cookies} from 'next/headers';
 import {proxyBackend} from '@/lib/backend-proxy';
 import {validateAccountConsent} from '@/lib/policy';
@@ -27,6 +28,12 @@ export async function POST(request:Request) {
   const {email,password,name,consent,next}=input;
   if(typeof email!=='string'||!email.trim()||email.length>254||typeof password!=='string'||password.length<12||password.length>128||typeof name!=='string'||name.trim().length<2||name.trim().length>40)
     return reply({code:'signup_fields',error:'Enter a nickname, email and password of at least 12 characters.'},400);
+  const proof=await verifySignupChallenge(input.altcha);
+  if(!proof)return reply({code:'captcha',error:'Complete verification again.'},400);
+  const guard=await proxyBackend(new Request(request.url,{method:'POST',headers:{'x-nf-client-connection-ip':request.headers.get('x-nf-client-connection-ip')||'','content-type':'application/json'},body:JSON.stringify({email:email.trim()})}),'signup-guard',proof);
+  if(!guard.ok)return guard;
+  const {ticket}=await guard.json();
+  if(typeof ticket!=='string'||ticket.length!==36)return reply({code:'network',error:'Signup verification unavailable.'},503);
   const client=await serverAuth();
   if(!client)return reply({code:'network',error:'Sign-up is temporarily unavailable.'},503);
   const destination=safeNext(typeof next==='string'?next:null);
@@ -34,7 +41,7 @@ export async function POST(request:Request) {
   callback.searchParams.set('next',destination);
   const {data,error}=await client.auth.signUp({
     email:email.trim(),password,
-    options:{data:{full_name:name.trim()},emailRedirectTo:callback.toString()},
+    options:{data:{full_name:name.trim(),hikmah_signup_ticket:ticket},emailRedirectTo:callback.toString()},
   });
   if(error)return reply({code:error.code,error:error.message},error.status||400);
   // Supabase may return an obfuscated user on a duplicate signup. Only a real
