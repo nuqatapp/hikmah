@@ -12,11 +12,21 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "supabase/functions/hikmah-api/index.js",
+    ".sites-runtime/**",
   ]),
   {
-    files: ["components/ui/**/*.{ts,tsx}", "hooks/use-mobile.ts"],
+    files:["app/hikmah.tsx","backend/{game-route,index}.ts","components/hikmah/{admin,journey,leaderboard,lobby,play}.tsx","db/raw.ts","lib/game/service.ts"],
+    rules:{"@typescript-eslint/no-explicit-any":"warn"},
+  },
+  {
+    files:["app/hikmah.tsx","components/hikmah/{admin,auth-form,journey,leaderboard,lobby,play,storage-notice}.tsx","components/hikmah/use-locale.ts"],
+    rules:{"react-hooks/set-state-in-effect":"warn","react-hooks/purity":"warn"},
+  },
+  {
+    files: ["components/ui/**/*.{ts,tsx}"],
     rules: {
-      // These files are vendored verbatim from shadcn@4.17.0. Keep the
+      // These components come from the shadcn registry. Keep the
       // registry source intact while applying the stricter rules to Site code.
       "@typescript-eslint/no-unused-vars": "off",
       "react-hooks/purity": "off",

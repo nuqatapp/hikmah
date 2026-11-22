@@ -1,7 +1,8 @@
 import 'server-only';
+import {backendToken,clientKey} from './request-guard';
 import {siteIdentity} from './site-identity';
 
-export async function proxyBackend(request: Request, resource: 'game' | 'avatar' | 'signup-consent') {
+export async function proxyBackend(request: Request, resource: 'game' | 'avatar' | 'signup-consent' | 'signup-guard', proof?:string) {
   let stage='configuration';
   try {
     const url = new URL(request.url);
@@ -21,9 +22,7 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
     }
     const base = process.env.HIKMAH_PREVIEW_BACKEND_URL || process.env.HIKMAH_BACKEND_URL;
     // The preview can use its own private credential without changing Production.
-    const token = (process.env.HIKMAH_PREVIEW_BACKEND_URL
-      ? process.env.HIKMAH_PREVIEW_BACKEND_TOKEN || process.env.HIKMAH_BACKEND_TOKEN
-      : process.env.HIKMAH_BACKEND_TOKEN)?.trim();
+    const token=backendToken();
     if (!base || !token) throw new Error('The backend connection is not configured.');
     if(!/^[a-f0-9]{64}$/.test(token))throw Object.assign(new Error('The backend credential format is invalid.'),{name:'CredentialFormatError'});
     const target = new URL(base);
@@ -35,12 +34,14 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
     const body = request.method === 'POST' ? await request.arrayBuffer() : undefined;
     if ((body?.byteLength || 0) > limit) return Response.json({error: 'Request is too large.'}, {status: 413});
     stage='identity';
-    const actor = resource==='signup-consent'?null:await siteIdentity();
+    const actor = resource.startsWith('signup-')?null:await siteIdentity();
     stage='upstream';
     const response = await fetch(target, {
       method: 'POST',
       headers: {
         'x-hikmah-server-token': token,
+        'x-hikmah-client':clientKey(request,token),
+        ...(resource==='signup-guard'&&proof&&{'x-hikmah-proof':proof}),
         // Keep SQL-heavy execution beside the project's Frankfurt database.
         // This removes the per-query transatlantic round trips from Netlify.
         'x-region': process.env.HIKMAH_BACKEND_REGION || 'eu-central-1',
@@ -55,6 +56,8 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
       'Cache-Control': resource === 'avatar' && request.method === 'GET' && response.ok ? 'private, max-age=86400' : 'no-store',
       'X-Content-Type-Options': 'nosniff',
     });
+    const retry=response.headers.get('retry-after');
+    if(retry)headers.set('Retry-After',retry);
     const version=response.headers.get('x-hikmah-backend-version');
     if(version)headers.set('X-Hikmah-Backend-Version',version);
     if(!response.ok)headers.set('X-Hikmah-Error-Stage','backend');

@@ -12,7 +12,7 @@ try{
  const english='The game service is temporarily unavailable. Please try again.';
  const arabic=gameErrorText(english,ar);
  assert(/[\u0600-\u06ff]/.test(arabic));assert.equal(gameErrorText(arabic,en),english);
- assert.equal(gameErrorText('Choose a game and language.',ar),'Choose a game and language.');
+ assert.equal(gameErrorText('Choose a game and language.',ar),'اختر لعبة ولغة.');
  let calls=0;let mode='success';let sent;
  globalThis.fetch=async(url,options)=>{calls++;sent={url,options};if(mode==='offline')throw new TypeError('internal network detail');if(mode==='html')return new Response('<h1>private upstream detail</h1>',{status:502});if(mode==='bad-json')return new Response('bad json');if(mode==='validation')return Response.json({error:'Choose a game and language.'},{status:400});if(mode==='unavailable')return Response.json({error:'internal service detail'},{status:503});return Response.json({state:{round:2},correct:true})};
  assert.deepEqual(await gameApi('answer',{id:'room',answer:'test'},undefined,'en'),{state:{round:2},correct:true});

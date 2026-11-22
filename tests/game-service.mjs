@@ -35,16 +35,21 @@ for(const kind of ['letters','mcq','cryptogram'])for(const locale of ['en','ar']
  for(let n=1;n<=10;n++){const state=await s.roomState(solo.id,a),rd=await s.one('SELECT * FROM rounds WHERE id=?',state.round.id);clock+=4000;const before=(await s.profile(a.id)).balance;const result=await s.submit(solo.id,rd.id,solve(JSON.parse(rd.snapshot)),a);assert(result.correct);await s.submit(solo.id,rd.id,solve(JSON.parse(rd.snapshot)),a);assert.equal((await s.profile(a.id)).balance,before+7,'duplicate reward');await s.advance(solo.id,a.id,true);roundsChecked++;}
  assert.equal((await s.roomState(solo.id,a)).room.status,'finished');
  const multi=await s.createRoom(kind,locale,'multi',a);await s.joinRoom(multi.code,b);await assert.rejects(()=>s.startRoom(multi.id,b.id),/host/);await s.startRoom(multi.id,a.id);
- for(let n=1;n<=5;n++){clock+=4000;const sa=await s.roomState(multi.id,a),sb=await s.roomState(multi.id,b);assert.deepEqual(sa.round.puzzle,sb.round.puzzle,'identical puzzles');const rd=await s.one('SELECT * FROM rounds WHERE id=?',sa.round.id);await s.submit(multi.id,rd.id,solve(JSON.parse(rd.snapshot)),a);const second=await s.submit(multi.id,rd.id,solve(JSON.parse(rd.snapshot)),b);assert(!second.correct,'second solver cannot win');assert.equal((await s.one('SELECT COUNT(*) n FROM wallet WHERE id=?','reward:'+rd.id)).n,1);clock+=6100;await s.advance(multi.id,b.id);roundsChecked++;}
+ for(let n=1;n<=5;n++){clock+=4000;const sa=await s.roomState(multi.id,a),sb=await s.roomState(multi.id,b);assert.deepEqual(sa.round.puzzle,sb.round.puzzle,'identical puzzles');const rd=await s.one('SELECT * FROM rounds WHERE id=?',sa.round.id);const prior=await s.one('SELECT 1 FROM attempts a JOIN rounds rr ON rr.id=a.round WHERE a.user=? AND a.correct=1 AND rr.content_id=?',a.id,rd.content_id);const move=await s.submit(multi.id,rd.id,solve(JSON.parse(rd.snapshot)),a);assert.equal(move.reward,prior?0:7);const second=await s.submit(multi.id,rd.id,solve(JSON.parse(rd.snapshot)),b);assert(!second.correct,'second solver cannot win');assert.equal((await s.one('SELECT COUNT(*) n FROM wallet WHERE id=?','reward:'+rd.id)).n,prior?0:1);clock+=6100;await s.advance(multi.id,b.id);roundsChecked++;}
  const result=await s.roomState(multi.id,b);assert.equal(result.room.status,'finished');assert.equal(result.players.find(p=>p.user===a.id).wins,5);
 }
 // Simultaneous correct submissions still award one round and one reward.
 const race=await s.createRoom('cryptogram','en','multi',a);await s.joinRoom(race.code,b);await s.startRoom(race.id,a.id);clock+=4000;
 let raceState=await s.roomState(race.id,a),raceRound=await s.one('SELECT * FROM rounds WHERE id=?',raceState.round.id);const correctAnswer=solve(JSON.parse(raceRound.snapshot));
-const competing=await Promise.all([s.submit(race.id,raceRound.id,correctAnswer,a),s.submit(race.id,raceRound.id,correctAnswer,b)]);assert.equal(competing.filter(x=>x.correct).length,1);assert.equal((await s.one('SELECT COUNT(*) n FROM wallet WHERE id=?','reward:'+raceRound.id)).n,1);await s.leaveRoom(race.id,a.id);await s.leaveRoom(race.id,b.id);
+const competing=await Promise.all([s.submit(race.id,raceRound.id,correctAnswer,a),s.submit(race.id,raceRound.id,correctAnswer,b)]);assert.equal(competing.filter(x=>x.correct).length,1);assert.equal((await s.one('SELECT COUNT(*) n FROM wallet WHERE id=?','reward:'+raceRound.id)).n,competing.some(move=>move.reward>0)?1:0);await s.leaveRoom(race.id,a.id);await s.leaveRoom(race.id,b.id);
 // Wrong quiz answers lock the user out, then a timeout advances the match.
 const wrong=await s.createRoom('mcq','en','multi',a);await s.joinRoom(wrong.code,b);await s.startRoom(wrong.id,a.id);clock+=4000;let st=await s.roomState(wrong.id,a),rd=await s.one('SELECT * FROM rounds WHERE id=?',st.round.id),snap=JSON.parse(rd.snapshot);
-await s.submit(wrong.id,rd.id,(Number(snap.answer)+1)%snap.choices.length,a);await assert.rejects(()=>s.submit(wrong.id,rd.id,Number(snap.answer),a),/already answered/);clock+=50000;st=await s.roomState(wrong.id,b);assert.equal(st.round.outcome,'timeout');clock+=6100;st=await s.roomState(wrong.id,b);assert.equal(st.round.number,2);assert.equal(st.room.host,b.id,'host failover');await s.leaveRoom(wrong.id,a.id);await s.leaveRoom(wrong.id,b.id);
+const wrongIndex=(Number(snap.answer)+1)%snap.choices.length;
+await s.submit(wrong.id,rd.id,wrongIndex,a);
+assert.equal((await s.roomState(wrong.id,a)).round.submittedChoice,wrongIndex);
+assert.equal((await s.roomState(wrong.id,b)).round.submittedChoice,null);
+assert.equal((await s.roomState(wrong.id,a)).round.correctChoice,null);
+await assert.rejects(()=>s.submit(wrong.id,rd.id,Number(snap.answer),a),/already answered/);clock+=50000;st=await s.roomState(wrong.id,b);assert.equal(st.round.outcome,'timeout');assert.equal(st.round.correctChoice,Number(snap.answer));clock+=6100;st=await s.roomState(wrong.id,b);assert.equal(st.round.number,2);assert.equal(st.room.host,b.id,'host failover');await s.leaveRoom(wrong.id,a.id);await s.leaveRoom(wrong.id,b.id);
 // Skip charging is atomic and cannot repeat.
 const skip=await s.createRoom('letters','en','solo',b);st=await s.roomState(skip.id,b);let balance=(await s.profile(b.id)).balance;await s.submit(skip.id,st.round.id,null,b,true);await s.submit(skip.id,st.round.id,null,b,true);assert.equal((await s.profile(b.id)).balance,balance-5);await s.leaveRoom(skip.id,b.id);
 // Guest play works without a wallet and cannot access someone else's game.
@@ -60,5 +65,12 @@ assert.deepEqual((await s.dashboard(guest)).active,[]);
 const replacement=await s.createRoom('mcq','ar','solo',guest);
 assert.notEqual(replacement.id,g.id);
 assert.deepEqual((await s.dashboard(guest)).active.map(room=>room.id),[replacement.id]);
+await s.leaveRoom(replacement.id,guest.id);
+const word=await s.createRoom('letters','en','solo',guest);
+const wordRound=(await s.roomState(word.id,guest)).round;
+clock+=26*86400_000;
+for(const left of [2,1,0])assert.equal((await s.submit(word.id,wordRound.id,'!',guest)).guessesLeft,left);
+assert.equal((await s.roomState(word.id,guest)).round.outcome,'incorrect');
+assert.equal((await s.one('SELECT elapsed FROM attempts WHERE round=?',wordRound.id)).elapsed,2147483647);
 console.log(JSON.stringify({passed:true,seedPuzzles:80,completedRounds:roundsChecked,coverage:['all games and languages','solo and two-player races','identical puzzle snapshots','first solver wins','simultaneous submissions','duplicate reward prevention','guest resume, leave and isolation','wrong-answer lockout','timeout','host recovery','skip charging','fresh migration']}));
 }finally{Date.now=original;sql.close();rmSync(tmp,{recursive:true,force:true})}

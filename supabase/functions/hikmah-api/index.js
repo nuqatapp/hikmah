@@ -5,7 +5,61 @@ var __export = (target, all) => {
 };
 
 // backend/index.ts
-import { env as env3 } from "node:process";
+import { createHash } from "node:crypto";
+
+// lib/game/errors.ts
+var gameErrors = {
+  signin: ["Sign in to continue.", "\u0633\u062C\u0651\u0644 \u0627\u0644\u062F\u062E\u0648\u0644 \u0644\u0644\u0645\u062A\u0627\u0628\u0639\u0629."],
+  suspended: ["This account is suspended.", "\u0647\u0630\u0627 \u0627\u0644\u062D\u0633\u0627\u0628 \u0645\u0648\u0642\u0648\u0641."],
+  admin: ["Administrator access required.", "\u064A\u0644\u0632\u0645 \u0625\u0630\u0646 \u0627\u0644\u0625\u062F\u0627\u0631\u0629."],
+  game_language: ["Choose a game and language.", "\u0627\u062E\u062A\u0631 \u0644\u0639\u0628\u0629 \u0648\u0644\u063A\u0629."],
+  game_language_invalid: ["Choose a valid game and language.", "\u0627\u062E\u062A\u0631 \u0644\u0639\u0628\u0629 \u0648\u0644\u063A\u0629 \u0645\u062A\u0627\u062D\u062A\u064A\u0646."],
+  signin_multi: ["Sign in to play with friends.", "\u0633\u062C\u0651\u0644 \u0627\u0644\u062F\u062E\u0648\u0644 \u0644\u0644\u0639\u0628 \u0645\u0639 \u0627\u0644\u0623\u0635\u062F\u0642\u0627\u0621."],
+  active_solo: ["Finish or leave your current solo game first.", "\u0623\u0643\u0645\u0644 \u0644\u0639\u0628\u062A\u0643 \u0627\u0644\u0641\u0631\u062F\u064A\u0629 \u0627\u0644\u062D\u0627\u0644\u064A\u0629 \u0623\u0648 \u063A\u0627\u062F\u0631\u0647\u0627 \u0623\u0648\u0644\u0627\u064B."],
+  active_multi: ["Finish or leave your current multi game first.", "\u0623\u0643\u0645\u0644 \u0645\u0628\u0627\u0631\u0627\u062A\u0643 \u0627\u0644\u062D\u0627\u0644\u064A\u0629 \u0623\u0648 \u063A\u0627\u062F\u0631\u0647\u0627 \u0623\u0648\u0644\u0627\u064B."],
+  insufficient_puzzles: ["Not enough puzzles in this language yet.", "\u0644\u0627 \u062A\u0648\u062C\u062F \u0623\u0644\u063A\u0627\u0632 \u0643\u0627\u0641\u064A\u0629 \u0628\u0647\u0630\u0647 \u0627\u0644\u0644\u063A\u0629 \u0628\u0639\u062F."],
+  signin_join: ["Sign in to join a room.", "\u0633\u062C\u0651\u0644 \u0627\u0644\u062F\u062E\u0648\u0644 \u0644\u0644\u0627\u0646\u0636\u0645\u0627\u0645 \u0625\u0644\u0649 \u063A\u0631\u0641\u0629."],
+  room_missing: ["Room not found.", "\u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u0639\u062B\u0648\u0631 \u0639\u0644\u0649 \u0627\u0644\u063A\u0631\u0641\u0629."],
+  room_started: ["This match has already started.", "\u0628\u062F\u0623\u062A \u0627\u0644\u0645\u0628\u0627\u0631\u0627\u0629 \u0628\u0627\u0644\u0641\u0639\u0644."],
+  room_full: ["Room is full.", "\u0627\u0644\u063A\u0631\u0641\u0629 \u0645\u0645\u062A\u0644\u0626\u0629."],
+  room_membership: ["Join this room to continue.", "\u0627\u0646\u0636\u0645 \u0625\u0644\u0649 \u0627\u0644\u063A\u0631\u0641\u0629 \u0644\u0644\u0645\u062A\u0627\u0628\u0639\u0629."],
+  host_only: ["Only the host can start the match.", "\u0627\u0644\u0645\u0636\u064A\u0641 \u0648\u062D\u062F\u0647 \u064A\u0645\u0643\u0646\u0647 \u0628\u062F\u0621 \u0627\u0644\u0645\u0628\u0627\u0631\u0627\u0629."],
+  players_needed: ["At least two players are needed.", "\u064A\u0644\u0632\u0645 \u0644\u0627\u0639\u0628\u0627\u0646 \u0639\u0644\u0649 \u0627\u0644\u0623\u0642\u0644."],
+  round_changed: ["The round has changed.", "\u062A\u063A\u064A\u0651\u0631\u062A \u0627\u0644\u062C\u0648\u0644\u0629."],
+  round_early: ["The round has not started yet.", "\u0644\u0645 \u062A\u0628\u062F\u0623 \u0627\u0644\u062C\u0648\u0644\u0629 \u0628\u0639\u062F."],
+  skip_unavailable: ["Skips are available in signed-in solo play.", "\u0627\u0644\u062A\u062E\u0637\u064A \u0645\u062A\u0627\u062D \u0641\u064A \u0627\u0644\u0644\u0639\u0628 \u0627\u0644\u0641\u0631\u062F\u064A \u0628\u0639\u062F \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644."],
+  already_answered: ["You have already answered this round.", "\u0623\u062C\u0628\u062A \u0639\u0646 \u0647\u0630\u0647 \u0627\u0644\u062C\u0648\u0644\u0629 \u0628\u0627\u0644\u0641\u0639\u0644."],
+  skip_balance: ["You need 5 HR to skip.", "\u062A\u062D\u062A\u0627\u062C \u0625\u0644\u0649 \u0665 HR \u0644\u0644\u062A\u062E\u0637\u064A."],
+  guess_limit: ["No guesses left this round.", "\u0646\u0641\u062F\u062A \u0645\u062D\u0627\u0648\u0644\u0627\u062A\u0643 \u0641\u064A \u0647\u0630\u0647 \u0627\u0644\u062C\u0648\u0644\u0629."],
+  unknown_request: ["Unknown request.", "\u0637\u0644\u0628 \u063A\u064A\u0631 \u0645\u0639\u0631\u0648\u0641."],
+  unknown_action: ["Unknown action.", "\u0625\u062C\u0631\u0627\u0621 \u063A\u064A\u0631 \u0645\u0639\u0631\u0648\u0641."],
+  invalid_request: ["Invalid request.", "\u0627\u0644\u0637\u0644\u0628 \u063A\u064A\u0631 \u0635\u0627\u0644\u062D."],
+  invalid_origin: ["Request origin is not allowed.", "\u0645\u0635\u062F\u0631 \u0627\u0644\u0637\u0644\u0628 \u063A\u064A\u0631 \u0645\u0633\u0645\u0648\u062D \u0628\u0647."],
+  request_size: ["Request is too large.", "\u062D\u062C\u0645 \u0627\u0644\u0637\u0644\u0628 \u0623\u0643\u0628\u0631 \u0645\u0646 \u0627\u0644\u0645\u0633\u0645\u0648\u062D."],
+  name_length: ["Display name must be 2 to 40 characters.", "\u064A\u062C\u0628 \u0623\u0646 \u064A\u062A\u0631\u0627\u0648\u062D \u0627\u0633\u0645 \u0627\u0644\u0639\u0631\u0636 \u0628\u064A\u0646 \u062D\u0631\u0641\u064A\u0646 \u0648\u0664\u0660 \u062D\u0631\u0641\u064B\u0627."],
+  username_format: ["Username needs 3 to 24 letters, numbers or underscores.", "\u0627\u0633\u062A\u062E\u062F\u0645 \u0645\u0646 \u0663 \u0625\u0644\u0649 \u0662\u0664 \u062D\u0631\u0641\u064B\u0627 \u0644\u0627\u062A\u064A\u0646\u064A\u064B\u0627 \u0623\u0648 \u0631\u0642\u0645\u064B\u0627 \u0623\u0648 \u0634\u0631\u0637\u0629 \u0633\u0641\u0644\u064A\u0629."],
+  username_taken: ["Username already used.", "\u0627\u0633\u0645 \u0627\u0644\u0645\u0633\u062A\u062E\u062F\u0645 \u0645\u0633\u062A\u062E\u062F\u0645 \u0628\u0627\u0644\u0641\u0639\u0644."],
+  report_length: ["Describe the issue in 5 to 1,000 characters.", "\u0635\u0641 \u0627\u0644\u0645\u0634\u0643\u0644\u0629 \u0641\u064A \u0665 \u0625\u0644\u0649 \u0661\u0660\u0660\u0660 \u062D\u0631\u0641."],
+  puzzle_missing: ["Puzzle not found.", "\u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u0639\u062B\u0648\u0631 \u0639\u0644\u0649 \u0627\u0644\u0644\u063A\u0632."],
+  report_duplicate: ["This report was already sent.", "\u0633\u0628\u0642 \u0625\u0631\u0633\u0627\u0644 \u0647\u0630\u0627 \u0627\u0644\u0628\u0644\u0627\u063A."],
+  prompt_length: ["Puzzle text must be 3 to 600 characters.", "\u064A\u062C\u0628 \u0623\u0646 \u064A\u062A\u0631\u0627\u0648\u062D \u0646\u0635 \u0627\u0644\u0644\u063A\u0632 \u0628\u064A\u0646 \u0663 \u0648\u0666\u0660\u0660 \u062D\u0631\u0641."],
+  invalid_choices: ["Enter valid answer choices.", "\u0623\u062F\u062E\u0644 \u062E\u064A\u0627\u0631\u0627\u062A \u0635\u0627\u0644\u062D\u0629 \u0644\u0644\u0625\u062C\u0627\u0628\u0629."],
+  choice_count: ["Enter 2 to 4 choices and a valid correct-answer number.", "\u0623\u062F\u062E\u0644 \u0645\u0646 \u062E\u064A\u0627\u0631\u064A\u0646 \u0625\u0644\u0649 \u0623\u0631\u0628\u0639\u0629 \u0648\u062D\u062F\u062F \u0631\u0642\u0645 \u0627\u0644\u0625\u062C\u0627\u0628\u0629 \u0627\u0644\u0635\u062D\u064A\u062D\u0629."],
+  missing_word: ["The missing answer must be one word present in the proverb.", "\u064A\u062C\u0628 \u0623\u0646 \u062A\u0643\u0648\u0646 \u0627\u0644\u0625\u062C\u0627\u0628\u0629 \u0643\u0644\u0645\u0629 \u0648\u0627\u062D\u062F\u0629 \u0645\u0648\u062C\u0648\u062F\u0629 \u0641\u064A \u0627\u0644\u0645\u062B\u0644."],
+  invalid_clues: ["Add 1 to 12 valid word clues.", "\u0623\u0636\u0641 \u0645\u0646 \u062A\u0644\u0645\u064A\u062D \u0648\u0627\u062D\u062F \u0625\u0644\u0649 \u0661\u0662 \u062A\u0644\u0645\u064A\u062D\u064B\u0627 \u0635\u0627\u0644\u062D\u064B\u0627."],
+  self_suspend: ["You cannot suspend your own account.", "\u0644\u0627 \u064A\u0645\u0643\u0646\u0643 \u0625\u064A\u0642\u0627\u0641 \u062D\u0633\u0627\u0628\u0643."],
+  report_status: ["Invalid report status.", "\u062D\u0627\u0644\u0629 \u0627\u0644\u0628\u0644\u0627\u063A \u063A\u064A\u0631 \u0635\u0627\u0644\u062D\u0629."],
+  verified_required: ["Sign in with a verified account to continue.", "\u0633\u062C\u0651\u0644 \u0627\u0644\u062F\u062E\u0648\u0644 \u0628\u062D\u0633\u0627\u0628 \u0645\u0624\u0643\u062F \u0644\u0644\u0645\u062A\u0627\u0628\u0639\u0629."],
+  consent_required: ["Review the account terms and guardian choices before playing with an account.", "\u0631\u0627\u062C\u0639 \u0634\u0631\u0648\u0637 \u0627\u0644\u062D\u0633\u0627\u0628 \u0648\u062E\u064A\u0627\u0631\u0627\u062A \u0648\u0644\u064A \u0627\u0644\u0623\u0645\u0631 \u0642\u0628\u0644 \u0627\u0644\u0644\u0639\u0628 \u0628\u062D\u0633\u0627\u0628."],
+  delete_confirmation: ["Type DELETE to confirm.", "\u0627\u0643\u062A\u0628 DELETE \u0644\u0644\u062A\u0623\u0643\u064A\u062F."],
+  image_size: ["Maximum image size is 5 MB.", "\u0627\u0644\u062D\u062F \u0627\u0644\u0623\u0642\u0635\u0649 \u0644\u062D\u062C\u0645 \u0627\u0644\u0635\u0648\u0631\u0629 \u0665 \u0645\u064A\u063A\u0627\u0628\u0627\u064A\u062A."],
+  image_choice: ["Choose an image up to 5 MB.", "\u0627\u062E\u062A\u0631 \u0635\u0648\u0631\u0629 \u0628\u062D\u062C\u0645 \u0644\u0627 \u064A\u062A\u062C\u0627\u0648\u0632 \u0665 \u0645\u064A\u063A\u0627\u0628\u0627\u064A\u062A."],
+  image_format: ["Use a PNG, JPEG or WebP image.", "\u0627\u0633\u062A\u062E\u062F\u0645 \u0635\u0648\u0631\u0629 \u0628\u0635\u064A\u063A\u0629 PNG \u0623\u0648 JPEG \u0623\u0648 WebP."],
+  over_request_rate_limit: ["Too many requests. Try again later.", "\u0637\u0644\u0628\u0627\u062A \u0643\u062B\u064A\u0631\u0629. \u062D\u0627\u0648\u0644 \u0644\u0627\u062D\u0642\u064B\u0627."]
+};
+function gameErrorCode(message) {
+  return Object.entries(gameErrors).find(([, [english]]) => english === message)?.[0] || "request_failed";
+}
 
 // db/raw.ts
 import postgres from "postgres";
@@ -1542,6 +1596,7 @@ var GameError = class extends Error {
   constructor(message, status = 400) {
     super(message);
     this.status = status;
+    this.code = gameErrorCode(message);
   }
 };
 var now = () => Date.now();
@@ -1652,9 +1707,9 @@ async function leaveRoom(id, user) {
   else if (r.host === user) await run("UPDATE rooms SET host=? WHERE id=?", other.user, id);
 }
 async function advance(id, user, manual = false) {
-  let r = await memberRoom(id, user);
+  const r = await memberRoom(id, user);
   const t = now();
-  if (r.mode === "multi") await run("UPDATE members SET last_seen=? WHERE room=? AND user=? AND last_seen<?", t, id, user, t - 5e3);
+  await run("UPDATE members SET last_seen=? WHERE room=? AND user=? AND last_seen<?", t, id, user, t - (r.mode === "multi" ? 5e3 : 36e5));
   if (r.mode === "multi") await run("UPDATE rooms SET host=? WHERE id=? AND host!=? AND EXISTS(SELECT 1 FROM members WHERE room=? AND user=rooms.host AND (last_seen<? OR left_at IS NOT NULL))", user, id, user, id, t - 45e3);
   if (r.status !== "active") return;
   let rd = await one("SELECT * FROM rounds WHERE room=? AND number=?", id, r.round);
@@ -1681,8 +1736,8 @@ async function roomState(id, u) {
   let round = null;
   if (rd) {
     const s = JSON.parse(rd.snapshot);
-    const attempt = await one("SELECT correct FROM attempts WHERE round=? AND user=?", rd.id, u.id);
-    round = { id: rd.id, number: rd.number, startedAt: rd.started_at, endedAt: rd.ended_at, winner: rd.winner, outcome: rd.outcome, puzzle: publicPuzzle(s), solution: rd.ended_at ? solution(s) : null, explanation: rd.ended_at ? s.explanation : null, submitted: !!attempt && r.kind === "mcq", deadline: r.mode === "multi" ? rd.started_at + ROUND_SECONDS[r.kind] * 1e3 : null };
+    const attempt = await one("SELECT correct,answer FROM attempts WHERE round=? AND user=?", rd.id, u.id);
+    round = { id: rd.id, number: rd.number, startedAt: rd.started_at, endedAt: rd.ended_at, winner: rd.winner, outcome: rd.outcome, puzzle: publicPuzzle(s), solution: rd.ended_at ? solution(s) : null, explanation: rd.ended_at ? s.explanation : null, submitted: !!attempt && (r.kind === "mcq" || !attempt.correct && Number(attempt.answer) >= 3), guessesLeft: r.kind === "mcq" ? null : Math.max(0, 3 - (attempt && !attempt.correct ? Number(attempt.answer) || 0 : 0)), submittedChoice: attempt && r.kind === "mcq" && /^\d+$/.test(attempt.answer) ? Number(attempt.answer) : null, correctChoice: r.kind === "mcq" && rd.ended_at ? Number(s.answer) : null, deadline: r.mode === "multi" ? rd.started_at + ROUND_SECONDS[r.kind] * 1e3 : null };
   }
   return { room: { id: r.id, code: r.code, kind: r.kind, locale: r.locale, mode: r.mode, status: r.status, host: r.host, total: r.total }, round, players, serverTime: now(), me: u.id, profile: u.signed ? await profile(u.id) : null, history: await many("SELECT number,winner,outcome,ended_at FROM rounds WHERE room=? AND ended_at IS NOT NULL ORDER BY number", id) };
 }
@@ -1703,14 +1758,24 @@ async function submit(id, roundId, answer, u, skip = false) {
     if ((await one("SELECT nonce FROM rounds WHERE id=?", rd.id)).nonce !== n) throw new GameError("You need 5 HR to skip.");
     return { skipped: true };
   }
-  const correct = checkAnswer(s, answer), elapsed = t - rd.started_at, nonce = uid();
-  if (!correct && r.kind !== "mcq") return { correct: false };
+  const correct = checkAnswer(s, answer), elapsed = Math.min(t - rd.started_at, 2147483647), nonce = uid();
+  if (r.kind !== "mcq") {
+    const attempt = await one("SELECT correct,answer FROM attempts WHERE round=? AND user=?", rd.id, u.id);
+    const guesses = attempt && !attempt.correct ? Number(attempt.answer) || 0 : 0;
+    if (guesses >= 3) throw new GameError("No guesses left this round.");
+    if (!correct) {
+      await run("INSERT INTO attempts(id,round,user,correct,answer,elapsed,created_at) VALUES(?,?,?,0,?,?,?) ON CONFLICT(round,user) DO UPDATE SET answer=excluded.answer,elapsed=excluded.elapsed,created_at=excluded.created_at", uid(), rd.id, u.id, String(guesses + 1), elapsed, t);
+      if (r.mode === "solo" && guesses === 2) await run("UPDATE rounds SET ended_at=?,outcome='incorrect' WHERE id=? AND ended_at IS NULL", t, rd.id);
+      return { correct: false, guessesLeft: 2 - guesses };
+    }
+  }
+  const prior = u.signed && await one("SELECT 1 FROM attempts a JOIN rounds rr ON rr.id=a.round WHERE a.user=? AND a.correct=1 AND rr.content_id=? LIMIT 1", u.id, rd.content_id);
   if (correct) {
-    const q2 = [["UPDATE rounds SET ended_at=?,winner=?,outcome='solved',nonce=? WHERE id=? AND ended_at IS NULL AND started_at<=? AND NOT EXISTS(SELECT 1 FROM attempts WHERE round=? AND user=?)", [t, u.id, nonce, rd.id, t, rd.id, u.id]], ["INSERT OR IGNORE INTO attempts(id,round,user,correct,answer,elapsed,created_at) SELECT ?,?,?,1,?,?,? WHERE EXISTS(SELECT 1 FROM rounds WHERE id=? AND nonce=?)", [uid(), rd.id, u.id, JSON.stringify(answer), elapsed, t, rd.id, nonce]]];
-    if (u.signed) q2.push(["INSERT OR IGNORE INTO wallet(id,user,amount,reason,created_at) SELECT ?,?,?,'Correct answer',? WHERE EXISTS(SELECT 1 FROM rounds WHERE id=? AND nonce=?)", ["reward:" + rd.id, u.id, reward(elapsed), t, rd.id, nonce]]);
+    const q2 = [["UPDATE rounds SET ended_at=?,winner=?,outcome='solved',nonce=? WHERE id=? AND ended_at IS NULL AND started_at<=?", [t, u.id, nonce, rd.id, t]], ["INSERT INTO attempts(id,round,user,correct,answer,elapsed,created_at) SELECT ?,?,?,1,?,?,? WHERE EXISTS(SELECT 1 FROM rounds WHERE id=? AND nonce=?) ON CONFLICT(round,user) DO UPDATE SET correct=1,answer=excluded.answer,elapsed=excluded.elapsed,created_at=excluded.created_at", [uid(), rd.id, u.id, JSON.stringify(answer), elapsed, t, rd.id, nonce]]];
+    if (u.signed && !prior) q2.push(["INSERT OR IGNORE INTO wallet(id,user,amount,reason,created_at) SELECT ?,?,?,'Correct answer',? WHERE EXISTS(SELECT 1 FROM rounds WHERE id=? AND nonce=?)", ["reward:" + rd.id, u.id, reward(elapsed), t, rd.id, nonce]]);
     await batch(q2);
-    const won = (await one("SELECT winner FROM rounds WHERE id=?", rd.id))?.winner === u.id;
-    return { correct: won, reward: won && u.signed ? reward(elapsed) : 0 };
+    const won = (await one("SELECT nonce FROM rounds WHERE id=?", rd.id))?.nonce === nonce;
+    return { correct: won, reward: won && u.signed && !prior ? reward(elapsed) : 0 };
   }
   const q = [["INSERT OR IGNORE INTO attempts(id,round,user,correct,answer,elapsed,created_at) SELECT ?,?,?,0,?,?,? WHERE EXISTS(SELECT 1 FROM rounds WHERE id=? AND ended_at IS NULL)", [uid(), rd.id, u.id, JSON.stringify(answer), elapsed, t, rd.id]]];
   if (r.mode === "solo") q.push(["UPDATE rounds SET ended_at=?,outcome='incorrect' WHERE id=? AND ended_at IS NULL", [t, rd.id]]);
@@ -1722,6 +1787,26 @@ async function dashboard(u) {
   const p = await ensureProfile(u);
   return { profile: p, signedIn: u.signed, stats: u.signed ? await one("SELECT COUNT(*) AS answered,COALESCE(SUM(correct),0) AS correct FROM attempts WHERE user=?", u.id) : null, active: await many("SELECT r.id,r.kind,r.mode,r.code FROM rooms r JOIN members m ON m.room=r.id WHERE m.user=? AND m.left_at IS NULL AND r.status IN ('waiting','active') AND (r.mode='solo' OR ?=1) ORDER BY r.created_at DESC", u.id, u.signed ? 1 : 0), counts: await many("SELECT kind,locale,COUNT(*) AS n FROM content WHERE active=1 GROUP BY kind,locale") };
 }
+
+// backend/request-guard.ts
+async function reserveRequest(op, client, proof, now2 = Date.now()) {
+  if (!client || !/^[a-f0-9]{64}$/.test(client)) return Response.json({ error: "Request verification unavailable." }, { status: 503 });
+  const size = 3600, hour = Math.floor(now2 / (size * 1e3)), limit = op === "signup" ? 3 : 12;
+  const counter = "guard:" + new Date(now2).toISOString().slice(0, 10) + ":" + op + ":" + hour + ":" + client;
+  const row = await one(`INSERT INTO site_settings(key,value) VALUES(?,'1')
+    ON CONFLICT(key) DO UPDATE SET value=CAST(CAST(site_settings.value AS INTEGER)+1 AS TEXT)
+    WHERE CAST(site_settings.value AS INTEGER)<? RETURNING value`, counter, limit);
+  if (!row) return Response.json({ code: "over_request_rate_limit", error: "Too many requests. Try again later." }, { status: 429, headers: { "Retry-After": String(size - Math.floor(now2 / 1e3) % size) } });
+  if (op === "signup") {
+    if (!proof || !/^[a-f0-9]{64}$/.test(proof)) return Response.json({ code: "captcha", error: "Complete verification again." }, { status: 400 });
+    const used = await one("INSERT INTO site_settings(key,value) VALUES(?,?) ON CONFLICT(key) DO NOTHING RETURNING value", "proof:" + proof, String(now2));
+    if (!used) return Response.json({ code: "captcha", error: "Complete verification again." }, { status: 400 });
+  }
+  return null;
+}
+
+// backend/index.ts
+import { env as env3 } from "node:process";
 
 // lib/policy.ts
 var ACCOUNT_POLICY_VERSION = "2026-11-13";
@@ -1818,7 +1903,7 @@ function json(data, status = 200) {
   return NextResponse.json(data, { status, headers: { "Cache-Control": "no-store" } });
 }
 function error(e) {
-  if (e instanceof GameError) return json({ error: e.message }, e.status);
+  if (e instanceof GameError) return json({ error: e.message, code: e.code }, e.status);
   throw e;
 }
 async function GET(req) {
@@ -1839,7 +1924,7 @@ async function GET(req) {
     }
     if (action === "leaderboard") {
       const week = q.get("period") !== "all";
-      return json({ rows: await many("SELECT p.id,p.name,p.avatar,COUNT(*) AS solved,SUM(CASE r.kind WHEN 'mcq' THEN 10 WHEN 'letters' THEN 15 ELSE 20 END) AS points FROM attempts a JOIN rounds rr ON rr.id=a.round JOIN rooms r ON r.id=rr.room JOIN profiles p ON p.id=a.user WHERE a.correct=1 AND a.created_at>=? GROUP BY p.id ORDER BY points DESC,solved DESC,p.name LIMIT 50", week ? Date.now() - 6048e5 : 0) });
+      return json({ rows: await many("SELECT p.id,p.name,p.avatar,COUNT(*) AS solved,SUM(CASE r.kind WHEN 'mcq' THEN 10 WHEN 'letters' THEN 15 ELSE 20 END) AS points FROM (SELECT a.user,rr.content_id,MIN(a.created_at) AS first_solved FROM attempts a JOIN rounds rr ON rr.id=a.round WHERE a.correct=1 GROUP BY a.user,rr.content_id) a JOIN content r ON r.id=a.content_id JOIN profiles p ON p.id=a.user WHERE a.first_solved>=? GROUP BY p.id ORDER BY points DESC,solved DESC,p.name LIMIT 50", week ? Date.now() - 6048e5 : 0) });
     }
     if (action === "profile") {
       const a = await requireAccount();
@@ -1994,7 +2079,7 @@ async function POST2(req) {
     return NextResponse.json({ avatar: key });
   } catch (e) {
     if (!(e instanceof GameError)) throw e;
-    return NextResponse.json({ error: e instanceof GameError ? e.message : "Could not upload the image." }, { status: e instanceof GameError ? e.status : 503 });
+    return NextResponse.json({ error: e.message, code: e.code }, { status: e instanceof GameError ? e.status : 503 });
   }
 }
 
@@ -2035,6 +2120,11 @@ async function runPrivacyMaintenance(sql) {
   for (const job of jobs) if (await finishErasure(sql, job.auth_user_id)) completed++;
   const cutoff = Date.now() - 30 * 864e5;
   await withDatabase(sql, async () => {
+    await run("DELETE FROM site_settings WHERE key LIKE 'guard:%' AND key<?", "guard:" + new Date(Date.now() - 864e5).toISOString().slice(0, 10));
+    await run("DELETE FROM site_settings WHERE key LIKE 'proof:%' AND value<?", String(Date.now() - 864e5));
+    await run("DELETE FROM site_settings WHERE key LIKE 'admit:%' AND value<?", String(Date.now()));
+    const unusedCutoff = Date.now() - 864e5;
+    await run("DELETE FROM rooms WHERE substr(host,1,2)='g_' AND mode='solo' AND updated_at<? AND NOT EXISTS(SELECT 1 FROM members m WHERE m.room=rooms.id AND m.last_seen>=?) AND NOT EXISTS(SELECT 1 FROM rounds r JOIN attempts a ON a.round=r.id WHERE r.room=rooms.id)", unusedCutoff, unusedCutoff);
     await run("DELETE FROM rooms WHERE substr(host,1,2)='g_' AND mode='solo' AND updated_at<? AND NOT EXISTS(SELECT 1 FROM rounds r JOIN attempts a ON a.round=r.id WHERE r.room=rooms.id AND a.created_at>=?)", cutoff, cutoff);
     await run("DELETE FROM attempts WHERE substr(user,1,2)='g_' AND created_at<?", cutoff);
     await run("DELETE FROM account_erasure_jobs WHERE status='completed' AND completed_at<?", cutoff);
@@ -2043,7 +2133,7 @@ async function runPrivacyMaintenance(sql) {
 }
 
 // backend/index.ts
-var BACKEND_VERSION = "2026-11-19-signup";
+var BACKEND_VERSION = "2026-11-22-integrity";
 function validActor(value) {
   return value && typeof value.id === "string" && value.id.length > 0 && value.id.length <= 200 && typeof value.name === "string" && value.name.length <= 200 && typeof value.signed === "boolean" && (value.signed ? !value.id.startsWith("g_") : /^g_[a-f0-9-]{36}$/.test(value.id)) && (value.authUserId === void 0 || value.signed && typeof value.authUserId === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value.authUserId) && value.id === "sb_" + value.authUserId);
 }
@@ -2060,6 +2150,18 @@ async function handleBackend(request) {
     const resource = url.searchParams.get("resource");
     const method = url.searchParams.get("method");
     if (resource === "maintenance" && method === "POST") return Response.json(await runPrivacyMaintenance(sql));
+    if (resource === "signup-guard" && method === "POST") {
+      const { email } = await request.json();
+      if (typeof email !== "string" || email.length > 254) return Response.json({ error: "Invalid email." }, { status: 400 });
+      return withDatabase(sql, async () => {
+        const blocked = await reserveRequest("signup", request.headers.get("x-hikmah-client"), request.headers.get("x-hikmah-proof"));
+        if (blocked) return blocked;
+        const ticket = crypto.randomUUID();
+        const digest = createHash("sha256").update(email.trim().toLowerCase() + ":" + ticket).digest("hex");
+        await run("INSERT INTO site_settings(key,value) VALUES(?,?)", "admit:" + digest, String(Date.now() + 3e5));
+        return Response.json({ ticket });
+      });
+    }
     if (resource === "signup-consent" && method === "POST") {
       const body2 = await request.text();
       if (body2.length > 4096) return Response.json({ error: "Request too large." }, { status: 413 });
@@ -2093,6 +2195,10 @@ async function handleBackend(request) {
       } catch {
         return Response.json({ error: "Invalid request." }, { status: 400 });
       }
+    }
+    if (operation === "create") {
+      const blocked = await withDatabase(sql, () => reserveRequest("create", request.headers.get("x-hikmah-client")));
+      if (blocked) return blocked;
     }
     const actorHeader = request.headers.get("x-hikmah-actor");
     let actor;

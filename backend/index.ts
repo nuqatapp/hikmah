@@ -1,3 +1,6 @@
+import {createHash} from 'node:crypto';
+import {run} from '../lib/game/service';
+import {reserveRequest} from './request-guard';
 import {env} from 'node:process';
 import {createConnection, withDatabase} from '../db/raw';
 import {actorContext, type Actor} from '../lib/game/actor';
@@ -8,7 +11,7 @@ import * as game from './game-route';
 import * as avatar from './avatar-route';
 import {finishErasure,runPrivacyMaintenance} from './privacy-jobs';
 
-export const BACKEND_VERSION='2026-11-19-signup';
+export const BACKEND_VERSION='2026-11-22-integrity';
 
 function validActor(value: any): value is Actor {
   return value && typeof value.id === 'string' && value.id.length > 0 && value.id.length <= 200 &&
@@ -32,6 +35,18 @@ export async function handleBackend(request: Request): Promise<Response> {
     const resource = url.searchParams.get('resource');
     const method = url.searchParams.get('method');
     if(resource==='maintenance'&&method==='POST')return Response.json(await runPrivacyMaintenance(sql));
+    if(resource==='signup-guard'&&method==='POST'){
+      const {email}=await request.json();
+      if(typeof email!=='string'||email.length>254)return Response.json({error:'Invalid email.'},{status:400});
+      return withDatabase(sql,async()=>{
+        const blocked=await reserveRequest('signup',request.headers.get('x-hikmah-client'),request.headers.get('x-hikmah-proof'));
+        if(blocked)return blocked;
+        const ticket=crypto.randomUUID();
+        const digest=createHash('sha256').update(email.trim().toLowerCase()+':'+ticket).digest('hex');
+        await run('INSERT INTO site_settings(key,value) VALUES(?,?)','admit:'+digest,String(Date.now()+300_000));
+        return Response.json({ticket});
+      });
+    }
     // Called only by the trusted site signup handler, never by the game API.
     if(resource==='signup-consent'&&method==='POST'){
       const body=await request.text();
@@ -50,6 +65,10 @@ export async function handleBackend(request: Request): Promise<Response> {
     if ((body?.byteLength || 0) > limit) return Response.json({error: 'Request is too large.'}, {status: 413});
     let operation='';let confirmation:unknown;
     if(resource==='game'&&body){try{const payload=JSON.parse(new TextDecoder().decode(body));operation=payload.action;confirmation=payload.confirm}catch{return Response.json({error:'Invalid request.'},{status:400})}}
+    if(operation==='create'){
+      const blocked=await withDatabase(sql,()=>reserveRequest('create',request.headers.get('x-hikmah-client')));
+      if(blocked)return blocked;
+    }
     const actorHeader = request.headers.get('x-hikmah-actor');
     let actor: Actor;
     try { actor = JSON.parse(decodeURIComponent(actorHeader || '')); }

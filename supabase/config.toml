@@ -1,5 +1,9 @@
 project_id = "vilgghdzyqdsvbaazphh"
 
+[auth.hook.before_user_created]
+enabled = true
+uri = "pg-functions://postgres/hikmah/require_verified_email_signup"
+
 [functions.hikmah-api]
 enabled = true
 # The function validates the private server credential before every action.

@@ -9,6 +9,19 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: hikmah-test
+          POSTGRES_DB: hikmah_test
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U postgres -d hikmah_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -21,6 +34,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm audit --prod --audit-level low
       - run: pnpm run typecheck
+      - run: pnpm run lint
       - run: pnpm run test:game
       - run: pnpm run test:blank
       - run: node tests/privacy-lifecycle.mjs
@@ -28,6 +42,9 @@ jobs:
       - run: node tests/game-transport.mjs
       - run: node tests/backend-proxy.mjs
       - run: pnpm run build:backend
+      - run: node tests/postgres-admin.mjs
+        env:
+          HIKMAH_TEST_DATABASE_URL: postgresql://postgres:hikmah-test@127.0.0.1:${{ job.services.postgres.ports[5432] }}/hikmah_test
       - run: pnpm run build
       - run: node tests/next-runtime.mjs
       - run: node tests/auth-runtime.mjs

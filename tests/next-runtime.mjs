@@ -43,6 +43,18 @@ try {
     assert.equal(response.status, 200, path);
     assert((await response.text()).includes('Hikmah'), path);
   }
+  for (const path of ['/robots.txt','/sitemap.xml','/manifest.webmanifest','/favicon.ico','/share.png']){
+    assert.equal((await fetch(origin+path)).status,200,path);
+  }
+  const home=await fetch(origin);
+  const policy=home.headers.get('content-security-policy');
+  const nonce=policy.match(/'nonce-([^']+)'/)[1];
+  assert.match(await home.text(),new RegExp('nonce="'+nonce+'"'));
+  assert.equal(home.headers.get('x-frame-options'),'DENY');
+  assert.equal(home.headers.get('referrer-policy'),'strict-origin-when-cross-origin');
+  const missing=await fetch(origin+'/qa-missing-page?lang=ar');
+  assert.equal(missing.status,404);
+  assert.match(await missing.text(),/الصفحة غير موجودة/);
   const privacy=await (await fetch(origin+'/privacy')).text();
   const callback=await fetch(origin+'/?code=qa-callback-code&next=%2Fprofile',{redirect:'manual'});
   assert.equal(callback.status,307);assert.equal(callback.headers.get('location'),'/auth/callback?code=qa-callback-code&next=%2Fprofile');
