@@ -6,7 +6,33 @@ import { ArrowRight,KeyRound,Plus,Users } from 'lucide-react';
 import { useEffect,useState } from 'react';
 import {gameErrorText, api,isActiveGameConflict,kinds,Loading,Picker,PuzzleLanguagePicker,StartGameError,title,type ActiveGame,type Props } from './shared';
 export function SignIn({t}:{t:Props['t']}){return <div className="panel empty"><KeyRound size={30} style={{margin:'auto'}}/><h2 style={{marginTop:20}}>{t('Your next chapter starts here.','تبدأ رحلتك هنا.')}</h2><p>{t('Sign in to play with friends, keep your progress and earn HR.','سجّل الدخول للعب مع الأصدقاء وحفظ تقدمك وكسب HR.')}</p><SignInLink className="btn" target="_top">{t('Sign in','تسجيل الدخول')}<ArrowRight size={16}/></SignInLink></div>}
-export function Lobby({t,locale,signed,questionLocale,puzzleLanguage,changePuzzleLanguage,refresh,active}:Props&{active:ActiveGame[]}){const router=useRouter();const [kind,setKind]=useState<Kind>('letters'),[code,setCode]=useState(''),[rooms,setRooms]=useState<any[]>([]),[error,setError]=useState(''),[loadError,setLoadError]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true);useEffect(()=>{const k=new URLSearchParams(window.location.search).get('kind');if(kinds.includes(k as Kind))setKind(k as Kind);const c=new URLSearchParams(window.location.search).get('code');if(c)setCode(c)},[]);useEffect(()=>{if(!signed)return;let active=true;const load=async()=>{try{const d=await api('lobby');if(active){setRooms(d.rooms);setLoadError('')}}catch(e){if(active)setLoadError((e as Error).message)}finally{if(active)setLoading(false)}};load();const timer=setInterval(load,5000);return()=>{active=false;clearInterval(timer)}},[signed]);async function act(action:string,body:any){setBusy(true);setError('');try{const d=await api(action,body);router.push('/play?id='+d.id)}catch(e){
+export function Lobby({t,locale,signed,questionLocale,puzzleLanguage,changePuzzleLanguage,refresh,active}:Props&{active:ActiveGame[]}){const router=useRouter();const [kind,setKind]=useState<Kind>('letters'),[code,setCode]=useState(''),[rooms,setRooms]=useState<any[]>([]),[error,setError]=useState(''),[loadError,setLoadError]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true);useEffect(()=>{const k=new URLSearchParams(window.location.search).get('kind');if(kinds.includes(k as Kind))setKind(k as Kind);const c=new URLSearchParams(window.location.search).get('code');if(c)setCode(c)},[]);useEffect(()=>{
+ if(!signed)return;
+ let active=true,inFlight=false;
+ let timer:ReturnType<typeof setTimeout>;
+ async function load(){
+  if(!active||inFlight||document.hidden)return;
+  inFlight=true;
+  try{
+   const result=await api('lobby');
+   if(active){setRooms(result.rooms);setLoadError('')}
+  }catch(error){if(active)setLoadError((error as Error).message)}
+  finally{
+   inFlight=false;
+   if(active){
+    setLoading(false);
+    if(!document.hidden)timer=setTimeout(load,5000);
+   }
+  }
+ }
+ function onVisibilityChange(){
+  clearTimeout(timer);
+  if(!document.hidden)void load();
+ }
+ document.addEventListener('visibilitychange',onVisibilityChange);
+ void load();
+ return()=>{active=false;clearTimeout(timer);document.removeEventListener('visibilitychange',onVisibilityChange)};
+},[signed]);async function act(action:string,body:any){setBusy(true);setError('');try{const d=await api(action,body);router.push('/play?id='+d.id)}catch(e){
  const message=(e as Error).message;
  if(isActiveGameConflict(message))await refresh();
  setError(message);
