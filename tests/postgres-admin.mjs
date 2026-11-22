@@ -11,9 +11,9 @@ process.env.SUPABASE_DB_URL=url.href;
 const sql=postgres(url.href,{max:1});
 const token='8'.repeat(64);
 
-async function request(actor,action,body){
+async function request(actor,action,body,query={}){
   const target=new URL('https://backend.invalid');
-  target.search=new URLSearchParams({resource:'game',method:body?'POST':'GET',action});
+  target.search=new URLSearchParams({resource:'game',method:body?'POST':'GET',action,...query});
   return handleBackend(new Request(target,{
     method:'POST',
     headers:{'x-hikmah-server-token':token,'x-hikmah-actor':encodeURIComponent(JSON.stringify(actor)),
@@ -69,7 +69,36 @@ try{
   const answer=await request(player,'answer',{id,roundId:round.id,answer:Number(snapshot.answer)});
   assert.equal(answer.status,200);
   assert.equal((await answer.json()).reward,7);
-  console.log('Passed PostgreSQL migrations, admin authorization, archive/restore, suspend/restore and a game reward.');
+  const created=await request(player,'create',{kind:'mcq',locale:'ar',mode:'multi'});
+  assert.equal(created.status,200);
+  const match=await created.json();
+  assert.equal((await request(admin,'room',null,{id:match.id})).status,403);
+  const joined=await request(admin,'join',{code:match.code});
+  assert.equal(joined.status,200);
+  assert.equal((await joined.json()).id,match.id);
+  assert.equal((await request(admin,'start',{id:match.id})).status,403);
+  const started=await request(player,'start',{id:match.id});
+  assert.equal(started.status,200);
+  const host=await started.json();
+  const member=await request(admin,'room',null,{id:match.id});
+  assert.equal(member.status,200);
+  assert.deepEqual((await member.json()).round.puzzle,host.state.round.puzzle);
+  const first=host.state.round;
+  assert.equal(first.correctChoice,null);
+  await new Promise(resolve=>setTimeout(resolve,Math.max(0,first.startedAt-Date.now())+50));
+
+  const [stored]=await sql`SELECT snapshot FROM hikmah.rounds WHERE id=${first.id}`;
+  const correctChoice=Number(JSON.parse(stored.snapshot).answer);
+  const results=await Promise.all([player,admin].map(actor=>
+    request(actor,'answer',{id:match.id,roundId:first.id,answer:correctChoice})));
+  assert(results.every(result=>result.ok));
+  const moves=await Promise.all(results.map(result=>result.json()));
+  assert.equal(moves.filter(move=>move.correct).length,1);
+  assert(moves.every(move=>move.state.round.correctChoice===correctChoice));
+  const rewards=await sql`SELECT amount FROM hikmah.wallet WHERE id=${'reward:'+first.id}`;
+  assert.equal(rewards.length,1);
+  assert(rewards[0].amount>0);
+  console.log('Passed PostgreSQL admin authorization, solo rewards, and a two-account multiplayer race with one reward.');
 }finally{
   await sql.end();
 }
