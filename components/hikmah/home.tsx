@@ -1,8 +1,6 @@
 'use client';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
-import Link from 'next/link';
-import {useRouter} from 'next/navigation';
 import {type Kind,type Locale} from '@/lib/game/rules';
 import {ArrowRight,Check,Coins,Globe,User,Users} from 'lucide-react';
 import {useState} from 'react';
