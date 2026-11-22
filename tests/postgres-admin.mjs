@@ -32,6 +32,34 @@ try{
   }
   const digest=createHash('sha256').update(token).digest('hex');
   await sql`INSERT INTO hikmah.server_credentials (id,token_hash) VALUES ('ci',${digest})`;
+  async function signupTicket(email,proof){
+    const result=await handleBackend(new Request('https://backend.invalid/?resource=signup-guard&method=POST',{
+      method:'POST',headers:{'x-hikmah-server-token':token,'x-hikmah-client':'7'.repeat(64),'x-hikmah-proof':proof,'content-type':'application/json'},
+      body:JSON.stringify({email}),
+    }));
+    assert.equal(result.status,200);
+    return (await result.json()).ticket;
+  }
+  async function signupHook(email,ticket){
+    const event={user:{email,app_metadata:{provider:'email'},user_metadata:{hikmah_signup_ticket:ticket}}};
+    return sql.begin(async tx=>{
+      await tx`SET LOCAL ROLE supabase_auth_admin`;
+      const [{result}]=await tx`SELECT hikmah.require_verified_email_signup(${tx.json(event)}::jsonb) AS result`;
+      return result;
+    });
+  }
+  const email='approved@example.invalid';
+  const ticket=await signupTicket(email,'4'.repeat(64));
+  assert.equal((await signupHook(email,null)).error.http_code,403);
+  assert.equal((await signupHook('different@example.invalid',ticket)).error.http_code,403);
+  assert.deepEqual(await signupHook(email,ticket),{});
+  assert.equal((await signupHook(email,ticket)).error.http_code,403);
+  const expired=await signupTicket(email,'5'.repeat(64));
+  const expiredKey='admit:'+createHash('sha256').update(email+':'+expired).digest('hex');
+  await sql`UPDATE hikmah.site_settings SET value=${String(Date.now()-1000)} WHERE key=${expiredKey}`;
+  assert.equal((await signupHook(email,expired)).error.http_code,403);
+  console.log('Passed PostgreSQL signup hook approval, email binding, replay and expiry checks.');
+
   const adminId='11111111-1111-4111-8111-111111111111';
   const playerId='22222222-2222-4222-8222-222222222222';
   const admin={id:'sb_'+adminId,authUserId:adminId,name:'CI admin',signed:true};
