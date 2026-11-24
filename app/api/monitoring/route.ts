@@ -8,7 +8,7 @@ const allowedItems=['event','client_report'];
 
 // Browser error reports are relayed through this route so the player's browser
 // never connects to Sentry. Sentry sees this server's address, not the player's,
-// and cannot derive a location from it. Only the User-Agent header is passed on.
+// and cannot derive a location from it. No request header is forwarded.
 export async function POST(request:Request) {
   const target=parseDsn(monitoringDsn());
   if(!target)return reply(404);
@@ -19,8 +19,6 @@ export async function POST(request:Request) {
   }catch{return reply(403)}
   if(Number(request.headers.get('content-length'))>200_000)return reply(413);
   try{
-    // Browser and operating system type are disclosed on the privacy page; this is the only header passed on.
-    const agent=(request.headers.get('user-agent')||'hikmah-relay').slice(0,300);
     const body=await request.text();
     if(body.length>200_000)return reply(413);
     const lines=body.split('\n');
@@ -31,7 +29,7 @@ export async function POST(request:Request) {
       if(!allowedItems.includes(JSON.parse(lines[index]).type))return reply(400);
     }
     try{
-      const response=await fetch(target.endpoint,{method:'POST',headers:{'Content-Type':'application/x-sentry-envelope','User-Agent':agent},body,cache:'no-store',signal:AbortSignal.timeout(5000)});
+      const response=await fetch(target.endpoint,{method:'POST',headers:{'Content-Type':'application/x-sentry-envelope'},body,cache:'no-store',signal:AbortSignal.timeout(5000)});
       return reply(response.ok?200:502);
     }catch{return reply(502)}
   }catch{return reply(400)}
