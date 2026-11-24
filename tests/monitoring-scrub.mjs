@@ -23,7 +23,7 @@ const event=scrubEvent({
   user:{id:auth,email,username:nickname,ip_address:'203.0.113.9'},
   extra:{profile:{name:nickname,email}},
   server_name:'host-1',
-  request:{url:'https://hikmahgame.com/api/game?action=export&id='+guest,method:'GET',query_string:'action=export',cookies:{hikmah_guest:guest},headers:{cookie:'hikmah_guest='+guest,authorization:'Bearer '+jwt,'x-hikmah-server-token':token},data:{email,name:nickname}},
+  request:{url:'https://hikmahgame.com/api/game?action=export&id='+guest,method:'GET',query_string:'action=export',cookies:{hikmah_guest:guest},headers:{cookie:'hikmah_guest='+guest,authorization:'Bearer '+jwt,'x-hikmah-server-token':token,'User-Agent':'Mozilla/5.0 Test'},data:{email,name:nickname}},
   contexts:{browser:{name:'Chrome'},state:{profile:{name:nickname}},trace:{trace_id:'1'}},
   message:'Login failed for '+email,
   transaction:'/play?id=abc123',
@@ -34,7 +34,7 @@ const event=scrubEvent({
 const sent=JSON.stringify(event);
 for(const secret of secrets)assert(!sent.includes(secret),'event keeps '+secret);
 assert(!sent.includes('203.0.113.9')&&!('user' in event)&&!('extra' in event));
-assert.deepEqual(event.request,{url:'https://hikmahgame.com/api/game',method:'GET'});
+assert.deepEqual(event.request,{url:'https://hikmahgame.com/api/game',method:'GET',headers:{'User-Agent':'Mozilla/5.0 Test'}});
 assert.deepEqual(Object.keys(event.contexts),['browser','trace']);
 assert.equal(event.tags.backend_version,'2026-11-24-monitoring');
 assert.equal(event.breadcrumbs.length,1);

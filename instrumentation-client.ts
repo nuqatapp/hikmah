@@ -6,6 +6,8 @@ const options=monitoringOptions('browser');
 if(options.enabled){
   Sentry.init({
     ...options,
+    // Reports go to this site's own relay, never straight to Sentry: see app/api/monitoring/route.ts.
+    tunnel:'/api/monitoring',
     // Session Replay and User Feedback are never added. Session counting, DOM
     // click trails and console capture are removed: they can carry on-screen
     // names. What remains is the error, its stack and scrubbed navigation/fetch URLs.

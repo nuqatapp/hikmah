@@ -55,6 +55,9 @@ try {
   const missing=await fetch(origin+'/qa-missing-page?lang=ar');
   assert.equal(missing.status,404);
   assert.match(await missing.text(),/الصفحة غير موجودة/);
+  // Without a DSN the error relay is closed, and the page may only connect to this site.
+  assert.equal((await fetch(origin+'/api/monitoring',{method:'POST',headers:{origin},body:'{}'})).status,404);
+  assert(!policy.includes('sentry'));
   const privacy=await (await fetch(origin+'/privacy')).text();
   const callback=await fetch(origin+'/?code=qa-callback-code&next=%2Fprofile',{redirect:'manual'});
   assert.equal(callback.status,307);assert.equal(callback.headers.get('location'),'/auth/callback?code=qa-callback-code&next=%2Fprofile');
