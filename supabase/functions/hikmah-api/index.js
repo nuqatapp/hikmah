@@ -2171,6 +2171,8 @@ function scrubEvent(event) {
     const request = {};
     if (typeof event.request.url === "string") request.url = scrubUrl(event.request.url);
     if (typeof event.request.method === "string") request.method = event.request.method.slice(0, 10);
+    const agent = event.request.headers?.["User-Agent"] || event.request.headers?.["user-agent"];
+    if (typeof agent === "string") request.headers = { "User-Agent": agent.slice(0, 300) };
     event.request = request;
   }
   if (event.contexts) {
