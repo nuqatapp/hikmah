@@ -2,6 +2,7 @@ import {serverAuth} from '@/lib/supabase/server';
 import {cookies} from 'next/headers';
 import {createClient} from '@supabase/supabase-js';
 import {authConfig,safeNext} from '@/lib/supabase/config';
+import {noteAuthFailure} from '@/lib/monitoring/health';
 import {readSignupMarker,signupBrowserCookie,validEmailTokenHash} from '@/lib/supabase/email-token';
 
 export async function POST(request:Request) {
@@ -32,13 +33,13 @@ export async function POST(request:Request) {
       // never replace this browser's session during automatic confirmation.
       const verifier=createClient(config.url,config.key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
       const {data,error}=await verifier.auth.verifyOtp({token_hash:token,type});
-      if(error||!data.session||data.user?.id!==expected)return fail();
+      if(error||!data.session||data.user?.id!==expected){await noteAuthFailure('confirm_failed',new URL(request.url).origin);return fail()}
       const {error:sessionError}=await client.auth.setSession(data.session);
       if(sessionError)return fail();
       verifiedUserId=data.user.id;
     }else{
       const {data,error}=await client.auth.verifyOtp({token_hash:token,type});
-      if(error)return fail();
+      if(error){await noteAuthFailure('confirm_failed',new URL(request.url).origin);return fail()}
       verifiedUserId=data.user?.id;
     }
     if(type==='email'&&jar.has(signupBrowserCookie))jar.set(signupBrowserCookie,'',{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:0});

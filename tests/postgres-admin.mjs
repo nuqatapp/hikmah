@@ -127,6 +127,39 @@ try{
   assert.equal(rewards.length,1);
   assert(rewards[0].amount>0);
   console.log('Passed PostgreSQL admin authorization, solo rewards, and a two-account multiplayer race with one reward.');
+
+  // Health: counted failures, release header on every response, administrator-only summary.
+  const {BACKEND_VERSION}=await import('../supabase/functions/hikmah-api/index.js');
+  const raw=(query,init={})=>handleBackend(new Request('https://backend.invalid/?'+new URLSearchParams(query),{method:'POST',...init,headers:{'x-hikmah-server-token':token,'content-type':'application/json',...init.headers}}));
+  const rejected=await handleBackend(new Request('https://backend.invalid/',{method:'GET'}));
+  assert.equal(rejected.status,405);assert.equal(rejected.headers.get('X-Hikmah-Backend-Version'),BACKEND_VERSION);
+  const counters=async()=>Number((await sql`SELECT COALESCE(SUM(value::int),0) AS n FROM hikmah.site_settings WHERE key LIKE 'health:h:%'`)[0].n);
+  const countersBefore=await counters();
+  const unknown=await raw({resource:'game',method:'GET',action:'dashboard'},{headers:{'x-hikmah-server-token':'6'.repeat(64)}});
+  assert.equal(unknown.status,401);assert.equal(unknown.headers.get('X-Hikmah-Backend-Version'),BACKEND_VERSION);
+  assert.equal(await counters(),countersBefore,'callers without the server credential cannot write counters');
+  assert.equal((await request(guest,'health')).status,401);
+  assert.equal((await request(player,'health')).status,403);
+  assert.equal((await raw({resource:'health-event',method:'POST'},{body:JSON.stringify({reason:'confirm_failed'})})).status,200);
+  assert.equal((await raw({resource:'health-event',method:'POST'},{body:JSON.stringify({reason:'player@example.invalid'})})).status,400);
+  assert.equal((await request(player,'not-a-real-action '+player.id,{})).status,404);
+  const ran=await raw({resource:'maintenance',method:'POST'});
+  assert.equal(ran.status,200);assert.equal(ran.headers.get('X-Hikmah-Backend-Version'),BACKEND_VERSION);
+  const healthResponse=await request(admin,'health');
+  assert.equal(healthResponse.status,200);assert.equal(healthResponse.headers.get('X-Hikmah-Backend-Version'),BACKEND_VERSION);
+  const health=await healthResponse.json();
+  const count=(kind,resource,action,status)=>health.failures.filter(row=>row.kind===kind&&row.resource===resource&&row.action===action&&row.status===status).reduce((total,row)=>total+row.count,0);
+  assert.equal(count('auth','game','admin',401),1);assert.equal(count('auth','game','admin',403),1);
+  assert.equal(count('auth','game','health',401),1);assert.equal(count('auth','game','health',403),1);
+  assert.equal(count('game','game','ban',400),1);assert.equal(count('auth','site','confirm_failed',0),1);
+  assert.equal(count('game','game','other',404),1,'unknown actions are counted under a fixed label');
+  assert.equal(health.maintenance.ok,true);assert(Math.abs(health.maintenance.at-Date.now())<60_000);
+  const healthRows=JSON.stringify(await sql`SELECT key,value FROM hikmah.site_settings WHERE key LIKE 'health:%'`);
+  for(const value of [adminId,playerId,guest.id,'example.invalid','9'.repeat(64),token])assert(!healthRows.includes(value),'health rows hold no identifiers');
+  await sql`INSERT INTO hikmah.site_settings(key,value) VALUES ('health:h:2020-01-01T00:game:game:create:503','4')`;
+  assert.equal((await raw({resource:'maintenance',method:'POST'})).status,200);
+  assert.equal((await sql`SELECT 1 FROM hikmah.site_settings WHERE key LIKE 'health:h:2020%'`).length,0,'old counters are pruned');
+  console.log('Passed PostgreSQL health counters, maintenance status, pruning, release header and administrator-only access.');
 }finally{
   await sql.end();
 }

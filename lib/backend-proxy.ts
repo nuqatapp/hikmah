@@ -1,8 +1,11 @@
 import 'server-only';
 import {backendToken,clientKey} from './request-guard';
 import {siteIdentity} from './site-identity';
+import {noteBackendVersion} from './monitoring/backend-version';
+import {reportServerFailure} from './monitoring/server';
 
-export async function proxyBackend(request: Request, resource: 'game' | 'avatar' | 'signup-consent' | 'signup-guard', proof?:string) {
+export type BackendResource='game' | 'avatar' | 'signup-consent' | 'signup-guard' | 'health-event';
+export async function proxyBackend(request: Request, resource: BackendResource, proof?:string) {
   let stage='configuration';
   try {
     const url = new URL(request.url);
@@ -34,7 +37,7 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
     const body = request.method === 'POST' ? await request.arrayBuffer() : undefined;
     if ((body?.byteLength || 0) > limit) return Response.json({error: 'Request is too large.'}, {status: 413});
     stage='identity';
-    const actor = resource.startsWith('signup-')?null:await siteIdentity();
+    const actor = resource.startsWith('signup-')||resource==='health-event'?null:await siteIdentity();
     stage='upstream';
     const response = await fetch(target, {
       method: 'POST',
@@ -60,11 +63,15 @@ export async function proxyBackend(request: Request, resource: 'game' | 'avatar'
     if(retry)headers.set('Retry-After',retry);
     const version=response.headers.get('x-hikmah-backend-version');
     if(version)headers.set('X-Hikmah-Backend-Version',version);
+    noteBackendVersion(version);
     if(!response.ok)headers.set('X-Hikmah-Error-Stage','backend');
+    // A crashed or timed-out function cannot report itself, so the proxy does.
+    if(response.status>=500)await reportServerFailure(new Error('Game backend responded with a server error'),{tags:{stage:'backend',resource,upstream_status:String(response.status)},fingerprint:['backend-status',resource,String(response.status)]});
     return new Response(response.body, {status: response.status, headers});
   } catch(error) {
     // Stage and error class only: never log credentials, headers, player data or bodies.
     console.error('Hikmah proxy failure',{stage,errorClass:error instanceof Error?error.name:'unknown'});
+    await reportServerFailure(error,{tags:{stage,resource},fingerprint:['proxy-failure',stage,error instanceof Error?error.name:'unknown']});
     const cause=(error as {cause?:{code?:unknown}})?.cause?.code;
     const headers=new Headers({'X-Hikmah-Error-Stage':stage,'X-Hikmah-Error-Type':error instanceof Error?error.name:'unknown'});
     if(typeof cause==='string'&&/^[A-Z_]{1,60}$/.test(cause))headers.set('X-Hikmah-Error-Code',cause);

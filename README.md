@@ -72,6 +72,7 @@ For a custom domain, add it to Hikmah's Netlify project, set DNS, then update Su
 - `pnpm test:game`: 80 puzzles and 90 game rounds against the local SQLite regression adapter.
 - `node tests/auth-runtime.mjs`: verified/revoked sessions, metadata isolation, PKCE callbacks, redirect validation, logout and CSRF with a local Auth mock. Run after a build without public Auth variables to allow test overrides.
 - `node tests/next-runtime.mjs`: production HTTP smoke checks with a local mock backend, including forged identity rejection. Run after the build.
+- `node tests/monitoring-scrub.mjs`: error-report scrubbing, the EU-only DSN guard and the envelope reporter.
 - `pnpm build:backend`: independently bundle the Supabase function. Do not redeploy it merely to change frontend hosting.
 
 Historical D1 migrations remain immutable and are used only by the local game regression tests. New database changes belong in `supabase/migrations/`.

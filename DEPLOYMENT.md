@@ -1,12 +1,14 @@
 # Hikmah deployment
 
-Production pointers verified on 2026-11-22. The verification and credential history below dates to September 2026.
+Production pointers verified on 2026-11-24 against the Netlify and Supabase project APIs. The verification and credential history below dates to September 2026.
 
 - Live site: https://hikmahgame.com
 - Netlify project: hikmah-wisdom-games, bfba38b2-602d-4890-8048-d6c6a0e4f7ea.
-- Production deploy: 6afebc95a1b7bd7f3439f923, ready.
+- Production deploy: 6b034465e9967ce655e960a2, ready, published 2026-11-22 19:37 UTC from `main` at f067045.
 - Public source: https://github.com/nuqatapp/hikmah, main. Publication was explicitly approved by the owner.
-- Supabase: vilgghdzyqdsvbaazphh, private hikmah schema, hikmah-api Edge Function version 6. The deployed game API reports `2026-11-19-signup` until the integrity release is deployed.
+- Supabase: vilgghdzyqdsvbaazphh, private hikmah schema. The production game API is the `hikmah-api-integrity` Edge Function, version 1, live since 22 November 2026 (created 19:13 UTC). Its deployed source reports `2026-11-22-integrity`. The production privacy-maintenance run of 24 November 03:01 UTC reached this function and returned 200, which confirms that the production `HIKMAH_BACKEND_URL` points to it.
+- The earlier `hikmah-api` (version 6, last updated 19 November) and `hikmah-api-candidate` (version 6, preview validation) remain deployed. Neither is the production endpoint. Retire `hikmah-api` only after the owner confirms no deployment still references it.
+- The repository builds the backend into `supabase/functions/hikmah-api/`. That directory name is the build output path, not the name of the production function: deploy its `index.js` and `deno.json` to `hikmah-api-integrity`, or to a new function followed by a coordinated backend URL switch. See the [coordinated release procedure](docs/OPERATIONS.md#coordinated-release).
 
 ## Working and verified
 
@@ -29,6 +31,18 @@ Netlify Free includes Secrets Controller. Restricting scopes to Functions only i
 The Netlify connector may report "upserted" even when an underlying create request fails. Use a new deployment and live runtime checks to verify changes. Earlier attempts using all scopes included prohibited Post processing; granular Functions-only or Builds/Functions attempts did not establish a working connection. The approved three-scope masked configuration resolved the live connection.
 
 References: https://docs.netlify.com/build/environment-variables/overview/ and https://docs.netlify.com/build/environment-variables/secrets-controller/
+
+## Error monitoring
+
+Sentry error monitoring is wired into the browser, the Next.js server, the `privacy-maintenance` scheduled function and the game Edge Function. It stays off until a DSN is configured, and only an EU (Germany) DSN is accepted. The backend release in this repository is `2026-11-24-monitoring`; it is not deployed by a frontend release. Configuration, what is sent and the release steps are in [docs/OPERATIONS.md](docs/OPERATIONS.md#error-monitoring-sentry). The admin Health tab shows a red warning while the live backend release differs from `backend/version.ts`.
+
+| Variable | Where | Scope and secrecy |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SENTRY_DSN` | Netlify | Builds, Functions, Runtime. Not a secret. |
+| `SENTRY_ORG` | Netlify | Builds, Functions, Runtime. Not a secret. |
+| `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` | Netlify | Builds only. The token is a secret. Optional: readable stack traces. |
+| `SENTRY_ISSUES_TOKEN` | Netlify | Functions, Runtime. Secret, read-only `event:read`. Never `NEXT_PUBLIC_`. |
+| `SENTRY_DSN` | Supabase function secrets | Same DSN, for the Edge Function. |
 
 ## Remaining setup
 

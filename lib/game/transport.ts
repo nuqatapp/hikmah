@@ -1,5 +1,6 @@
 import {gameErrors} from './errors';
 import type {Locale} from './rules';
+import {noteBackendVersion} from '../monitoring/backend-version';
 
 const clientErrors=[
  ['The game service is temporarily unavailable. Please try again.','خدمة اللعبة غير متاحة مؤقتًا. حاول مرة أخرى.'],
@@ -24,6 +25,7 @@ export async function gameApi(action:string,body?:Record<string,unknown>,query?:
    signal:AbortSignal.timeout(30_000),
   });
  }catch{throw new Error(ar()?'تعذر الاتصال باللعبة. تحقق من اتصالك وحاول مرة أخرى.':'Could not reach the game. Check your connection and try again.')}
+ noteBackendVersion(response.headers.get('X-Hikmah-Backend-Version'));
  if(response.status>=500)throw new Error(unavailable());
  let data;
  try{data=await response.json()}catch{throw new Error(unavailable())}

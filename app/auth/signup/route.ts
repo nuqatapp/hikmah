@@ -5,6 +5,7 @@ import {validateAccountConsent} from '@/lib/policy';
 import {serverAuth} from '@/lib/supabase/server';
 import {safeNext} from '@/lib/supabase/config';
 import {signupBrowserCookie} from '@/lib/supabase/email-token';
+import {noteAuthFailure} from '@/lib/monitoring/health';
 
 const headers={'Cache-Control':'no-store'};
 const reply=(body:object,status=200)=>Response.json(body,{status,headers});
@@ -43,7 +44,7 @@ export async function POST(request:Request) {
     email:email.trim(),password,
     options:{data:{full_name:name.trim(),hikmah_signup_ticket:ticket},emailRedirectTo:callback.toString()},
   });
-  if(error)return reply({code:error.code,error:error.message},error.status||400);
+  if(error){await noteAuthFailure('signup_rejected',origin!);return reply({code:error.code,error:error.message},error.status||400)}
   // Supabase may return an obfuscated user on a duplicate signup. Only a real
   // new email identity can create an attestation or mark this browser.
   const user=data.user;

@@ -41,6 +41,7 @@ jobs:
       - run: node tests/room-polling.mjs
       - run: node tests/game-transport.mjs
       - run: node tests/backend-proxy.mjs
+      - run: node tests/monitoring-scrub.mjs
       - run: pnpm run build:backend
       - run: node tests/postgres-admin.mjs
         env:

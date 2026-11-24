@@ -10,12 +10,53 @@ The frontend is deployed by Netlify from `nuqatapp/hikmah`. The game backend is 
 2. Before enabling destructive maintenance, confirm the provider's backup retention and recovery process. Preserve the 13 unlinked legacy game profiles until ownership is established; never merge by nickname.
 3. Migration `20261113084133_privacy_account_lifecycle` was applied to the confirmed project `vilgghdzyqdsvbaazphh` on 13 November 2026. It is additive. RLS is enabled on all three new private tables; verified `anon`/`authenticated` access is denied. Existing records were preserved.
    The same backend is deployed separately as `hikmah-api-candidate` for preview validation. Configure `HIKMAH_PREVIEW_BACKEND_URL` and the secret `HIKMAH_PREVIEW_BACKEND_TOKEN` in the Netlify Deploy Previews context only, with Functions scope. Provision only its SHA-256 hash in the private `hikmah.server_credentials` table. Production continues using `HIKMAH_BACKEND_URL` and `HIKMAH_BACKEND_TOKEN`; never overwrite the Production secret to fix a preview. The preview credential can be revoked independently when no longer needed.
-4. Run `pnpm run build:backend`. Deploy the generated `supabase/functions/hikmah-api/index.js` and `deno.json` to the existing `hikmah-api` function. Preserve its existing private server-token gate. Its gateway JWT setting is deliberately disabled because the function implements its own credential verification.
+4. Run `pnpm run build:backend`. Deploy the generated `supabase/functions/hikmah-api/index.js` and `deno.json` to the production function. Since 22 November 2026 that is `hikmah-api-integrity`; the directory name is only the build output path. Confirm the function behind the production `HIKMAH_BACKEND_URL` before deploying. Preserve its existing private server-token gate. Its gateway JWT setting is deliberately disabled because the function implements its own credential verification.
 5. Publish the matching frontend promptly. Signed-in game actions require current account authorisation; an older frontend cannot complete that onboarding. Use a coordinated release window. Keep guest play available.
-6. Verify that `X-Hikmah-Backend-Version` matches `BACKEND_VERSION` in the release's `backend/index.ts` (the integrity release uses `2026-11-22-integrity`) on game API responses, a complete session in each mode/language, two-account multiplayer, export and erasure with disposable accounts, and measured request latency. Do not infer a successful backend release from the Netlify commit alone.
+6. Verify that `X-Hikmah-Backend-Version` matches `BACKEND_VERSION` in the release's `backend/version.ts`, re-exported by `backend/index.ts` (the integrity release uses `2026-11-22-integrity`, the monitoring release `2026-11-24-monitoring`). The header is sent on every backend response, including errors. The admin Health tab shows both values and a red warning when they differ. Check it on game API responses, a complete session in each mode/language, two-account multiplayer, export and erasure with disposable accounts, and measured request latency. Do not infer a successful backend release from the Netlify commit alone.
 7. Confirm Netlify registered the daily `privacy-maintenance` scheduled function (03:00 UTC / 06:00 Saudi time) and its production runtime has `HIKMAH_BACKEND_URL` and `HIKMAH_BACKEND_TOKEN`. A failed run must be investigated; the next daily run retries durable pending jobs.
 
 No secret belongs in a browser bundle or this document. Supabase needs its existing server-side DB URL and service-role key. Netlify needs its existing private proxy token. `HIKMAH_BACKEND_REGION` optionally overrides the default Frankfurt function routing.
+
+## Error monitoring (Sentry)
+
+Sentry (Functional Software, Inc.) is a processor for error reports. Use an organisation created with the **European Union (EU)** data storage location, which Sentry stores at rest in Frankfurt, Germany. The location cannot be changed after the organisation is created. Some organisation metadata (account, settings, DSN keys, audit logs) is held in the United States under Sentry's documented model; error events are not.
+
+**Coverage.** The browser and the Next.js server use `@sentry/nextjs` 11 (`instrumentation-client.ts`, `instrumentation.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `app/global-error.tsx`). The `privacy-maintenance` scheduled function and the Edge Function use the dependency-free reporter in `lib/monitoring/reporter.mjs`, which speaks Sentry's envelope protocol. Every event carries `surface` and `backend_version`, the latter taken from `X-Hikmah-Backend-Version`.
+
+**What is sent.** Error type and message, stack trace with a few lines of this public source code around each frame, page or route address without query string, HTTP method, browser, operating system and runtime type and version, navigation and request breadcrumbs reduced to address, method and status, release, environment and fixed tags. Nothing else.
+
+**What is not sent.** `@sentry/nextjs` 11 removed `sendDefaultPii` and collects every category by default. `lib/monitoring/options.ts` therefore switches every `dataCollection` category off; this is the version 11 equivalent of `sendDefaultPii: false`. Session Replay, User Feedback, tracing, logs, session counting, console capture and DOM click trails are not enabled. `lib/monitoring/scrub.mjs` then runs on every event: it removes user, cookies, headers, request bodies, query strings, local variables and extra data, and redacts emails, tokens, identifiers and query strings inside messages. Nicknames cannot be pattern matched, so every container that could hold one is removed instead. The SDK sends `infer_ip: never`. Do not add `Sentry.setUser`, free-form tags, extra data or new integrations without repeating the browser and server payload checks.
+
+**Retention.** Sentry keeps error events for 30 days on its Developer (free) plan and 90 days on Team and Business plans. Retention is fixed when an event is ingested. The public privacy page states both figures; update it if the plan or Sentry's policy changes.
+
+**Sentry project settings to apply once.** Security & Privacy: enable *Prevent Storing of IP Addresses* and keep *Data Scrubber* and *Use Default Scrubbers* on. Leave Session Replay, tracing and uptime monitoring unused; uptime checks are stored outside the selected region. Record the data processing agreement and transfer basis with the other processor evidence.
+
+**Configuration.** Values are listed in `.env.example`.
+
+- `NEXT_PUBLIC_SENTRY_DSN` in Netlify, scopes Builds, Functions and Runtime. A DSN is not a secret, but it is configured in the environment only. Code accepts only `https://<key>@o<org>.ingest.de.sentry.io/<project>`; any other value disables reporting. The same origin is added to the Content Security Policy `connect-src`.
+- `SENTRY_ORG` in Netlify, scopes Builds, Functions and Runtime.
+- `SENTRY_PROJECT` and `SENTRY_AUTH_TOKEN` in Netlify, Builds scope, token marked secret. Optional: they upload source maps for readable stack traces. Without them the build skips the upload.
+- `SENTRY_ISSUES_TOKEN` in Netlify, scopes Functions and Runtime, marked secret. A read-only token with `event:read` for the Health tab. It is used only by `app/api/admin/health/route.ts` against `de.sentry.io` and never reaches the browser.
+- `SENTRY_DSN` as a Supabase function secret on the production game function, plus `HIKMAH_ENVIRONMENT=preview` on a candidate function if one should report separately.
+
+Reporting stays off wherever the DSN is absent. Apply the Sentry project settings above before configuring the DSN in Production.
+
+### Admin Health tab
+
+`/admin` → Health is available to administrators only; the game backend performs the check. It shows the latest unresolved Sentry issues, failed game API calls and sign-in or permission errors for the last 24 hours, the last privacy-maintenance run, and the live backend release against `backend/version.ts`.
+
+The counters are hourly rows in the private `hikmah.site_settings` table under `health:h:…`, written by the Edge Function for requests that passed the server credential check. They hold a fixed vocabulary (kind, resource, action, status, count) and no player, session or address data. Privacy maintenance deletes them after 48 hours and records its own result under `health:maintenance`. No migration is required. Wrong passwords are checked by Supabase Auth in the browser and are not counted; use the Supabase Auth logs for those.
+
+A frontend release ahead of the backend is safe: the tab shows the version warning and a notice that health data needs the matching Edge Function.
+
+### Releasing the monitoring backend
+
+1. Run `pnpm run build:backend` and commit the result with the source change.
+2. Optionally deploy to `hikmah-api-candidate` first and validate on a Deploy Preview.
+3. Set the `SENTRY_DSN` function secret in Supabase (Edge Functions → Secrets).
+4. Deploy `supabase/functions/hikmah-api/index.js` and `deno.json` to `hikmah-api-integrity` with gateway JWT verification disabled, as it is today. With the CLI, from a copy of that directory named `hikmah-api-integrity`: `supabase functions deploy hikmah-api-integrity --project-ref vilgghdzyqdsvbaazphh --no-verify-jwt`.
+5. Open `/admin` → Health and confirm the live release reads `2026-11-24-monitoring` with no red warning, then complete the checks in step 6 of the coordinated release.
+6. Rollback: redeploy the previous function version from the Supabase dashboard. The site keeps working against `2026-11-22-integrity`; only the Health data is unavailable.
 
 ## Signup protection rollout
 
@@ -77,7 +118,7 @@ Guest play remains available to all ages. Accounts require a person with legal c
 
 ## Provider, email and content evidence
 
-Maintain a processor/transfer assessment covering Supabase (Frankfurt), Netlify (including U.S. infrastructure), Gmail support and enabled OAuth providers. Record contractual safeguards, applicable transfer mechanism, subprocessors, security measures, retention and the actual necessity of each data flow. Public disclosure alone does not satisfy transfer requirements.
+Maintain a processor/transfer assessment covering Supabase (Frankfurt), Netlify (including U.S. infrastructure), Sentry error monitoring (event storage in Frankfurt, Germany; a U.S. company with organisation metadata in the United States; 30 or 90 day error retention by plan), Gmail support and enabled OAuth providers. Record contractual safeguards, applicable transfer mechanism, subprocessors, security measures, retention and the actual necessity of each data flow. Public disclosure alone does not satisfy transfer requirements.
 
 Verify SMTP delivery, confirmation/reset templates, sender identity, session revocation and configured log/backup retention in the provider dashboards. Current application code sends no marketing campaigns. If marketing is added, obtain the applicable separate consent and implement a free working unsubscribe/suppression process before sending it.
 

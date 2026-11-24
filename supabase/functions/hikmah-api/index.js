@@ -1806,7 +1806,7 @@ async function reserveRequest(op, client, proof, now2 = Date.now()) {
 }
 
 // backend/index.ts
-import { env as env3 } from "node:process";
+import { env as env4 } from "node:process";
 
 // lib/policy.ts
 var ACCOUNT_POLICY_VERSION = "2026-11-13";
@@ -1898,6 +1898,47 @@ __export(game_route_exports, {
   POST: () => POST,
   dynamic: () => dynamic
 });
+
+// backend/health.ts
+var actions = /* @__PURE__ */ new Set(["dashboard", "export", "room", "lobby", "leaderboard", "profile", "admin", "health", "create", "join", "start", "leave", "answer", "skip", "next", "report", "content", "ban", "archive", "resolve", "consent", "delete", "get", "post", "signup_rejected", "callback_failed", "confirm_failed"]);
+var resources = /* @__PURE__ */ new Set(["game", "avatar", "signup-guard", "signup-consent", "maintenance", "site"]);
+var siteAuthReasons = ["signup_rejected", "callback_failed", "confirm_failed"];
+var hourKey = (time) => new Date(time).toISOString().slice(0, 13);
+var increment = "INSERT INTO site_settings(key,value) VALUES(?,'1') ON CONFLICT(key) DO UPDATE SET value=CAST(CAST(site_settings.value AS INTEGER)+1 AS TEXT)";
+async function recordFailure(sql, meta, status) {
+  const resource = resources.has(meta.resource) ? meta.resource : "other", action = actions.has(meta.action) ? meta.action : "other";
+  const kind = meta.kind || (status === 401 || status === 403 || resource.startsWith("signup-") ? "auth" : "game");
+  const key = ["health:h", hourKey(Date.now()), kind, resource, action, String(status)].join(":");
+  try {
+    await Promise.race([withDatabase(sql, () => run(increment, key)), new Promise((resolve) => setTimeout(resolve, 2e3))]);
+  } catch {
+  }
+}
+async function recordMaintenance(sql, result) {
+  try {
+    await withDatabase(sql, () => run("INSERT INTO site_settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", "health:maintenance", JSON.stringify({ ...result, at: Date.now() })));
+  } catch {
+  }
+}
+async function pruneHealth() {
+  await run("DELETE FROM site_settings WHERE key LIKE 'health:h:%' AND key<?", "health:h:" + hourKey(Date.now() - 2 * 864e5));
+}
+async function healthSummary() {
+  const rows = await many("SELECT key,value FROM site_settings WHERE key LIKE 'health:h:%' AND key>=? ORDER BY key DESC", "health:h:" + hourKey(Date.now() - 24 * 36e5));
+  const failures = rows.map((row) => {
+    const [, , hour, kind, resource, action, status] = row.key.split(":");
+    return { hour, kind, resource, action, status: Number(status), count: Number(row.value) || 0 };
+  });
+  const stored = await one("SELECT value FROM site_settings WHERE key='health:maintenance'");
+  let maintenance = null;
+  try {
+    if (stored?.value) maintenance = JSON.parse(stored.value);
+  } catch {
+  }
+  return { since: Date.now() - 24 * 36e5, failures, maintenance };
+}
+
+// backend/game-route.ts
 var dynamic = "force-dynamic";
 function json(data, status = 200) {
   return NextResponse.json(data, { status, headers: { "Cache-Control": "no-store" } });
@@ -1933,6 +1974,10 @@ async function GET(req) {
     if (action === "admin") {
       await requireAdmin();
       return json({ content: await many("SELECT * FROM content ORDER BY kind,locale,id"), reports: await many("SELECT r.*,c.prompt FROM reports r LEFT JOIN content c ON c.id=r.content_id ORDER BY r.created_at DESC LIMIT 100"), users: await many("SELECT id,name,username,banned,created_at FROM profiles ORDER BY created_at DESC LIMIT 100") });
+    }
+    if (action === "health") {
+      await requireAdmin();
+      return json(await healthSummary());
     }
     throw new GameError("Unknown request.", 404);
   } catch (e) {
@@ -2084,7 +2129,141 @@ async function POST2(req) {
 }
 
 // backend/privacy-jobs.ts
+import { env as env3 } from "node:process";
+
+// backend/monitoring.ts
 import { env as env2 } from "node:process";
+
+// lib/monitoring/scrub.mjs
+var EMAIL = /[^\s@<>()"',;:]+@[^\s@<>()"',;:]+\.[^\s@<>()"',;:]+/g;
+var JWT = /\b[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g;
+var BEARER = /\b(Bearer|Basic|apikey)\s+[A-Za-z0-9._~+/=-]{8,}/gi;
+var UUID = /\b(?:sb_|g_)?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
+var SECRET = /\b(?:pkce_)?[A-Za-z0-9_-]*[0-9a-f]{32,}[A-Za-z0-9_-]*\b/gi;
+var QUERY = /\?[^\s"'<>)]*/g;
+var QUERY_IN_TEXT = /\?[^\s"'<>)]+/g;
+var FRAGMENT = /#[^\s"'<>)]*/g;
+function scrubUrl(value) {
+  if (typeof value !== "string") return "";
+  return value.replace(QUERY, "").replace(FRAGMENT, "").slice(0, 500);
+}
+function scrubText(value) {
+  if (typeof value !== "string") return "";
+  return value.slice(0, 2e3).replace(EMAIL, "[email]").replace(BEARER, "$1 [token]").replace(JWT, "[token]").replace(UUID, "[id]").replace(SECRET, "[token]").replace(QUERY_IN_TEXT, "?[query]");
+}
+var allowedContexts = ["browser", "os", "runtime", "trace"];
+var allowedBreadcrumbs = ["navigation", "fetch", "xhr", "http"];
+function scrubBreadcrumb(crumb) {
+  if (!crumb || !allowedBreadcrumbs.includes(crumb.category)) return null;
+  const data = crumb.data || {}, kept = {};
+  if (typeof data.method === "string") kept.method = data.method.slice(0, 10);
+  if (typeof data.status_code === "number") kept.status_code = data.status_code;
+  for (const key of ["url", "from", "to"]) if (typeof data[key] === "string") kept[key] = scrubUrl(data[key]);
+  return { type: crumb.type, category: crumb.category, level: crumb.level, timestamp: crumb.timestamp, data: kept };
+}
+function scrubEvent(event) {
+  if (!event || typeof event !== "object") return event;
+  delete event.user;
+  delete event.extra;
+  delete event.server_name;
+  delete event.modules;
+  if (event.request) {
+    const request = {};
+    if (typeof event.request.url === "string") request.url = scrubUrl(event.request.url);
+    if (typeof event.request.method === "string") request.method = event.request.method.slice(0, 10);
+    event.request = request;
+  }
+  if (event.contexts) {
+    const contexts = {};
+    for (const name of allowedContexts) if (event.contexts[name]) contexts[name] = event.contexts[name];
+    event.contexts = contexts;
+  }
+  if (typeof event.message === "string") event.message = scrubText(event.message);
+  if (event.logentry) event.logentry = { message: scrubText(event.logentry.message) };
+  if (typeof event.transaction === "string") event.transaction = scrubUrl(event.transaction);
+  for (const item of event.exception?.values || []) {
+    if (typeof item.value === "string") item.value = scrubText(item.value);
+    if (item.mechanism?.data) delete item.mechanism.data;
+    for (const frame of item.stacktrace?.frames || []) {
+      delete frame.vars;
+      for (const key of ["filename", "abs_path"]) if (typeof frame[key] === "string") frame[key] = scrubUrl(frame[key]);
+    }
+  }
+  const crumbs = Array.isArray(event.breadcrumbs) ? event.breadcrumbs : event.breadcrumbs?.values;
+  if (crumbs) event.breadcrumbs = crumbs.map(scrubBreadcrumb).filter(Boolean);
+  if (event.tags && typeof event.tags === "object" && !Array.isArray(event.tags)) {
+    for (const key of Object.keys(event.tags)) if (typeof event.tags[key] === "string") event.tags[key] = scrubText(event.tags[key]).slice(0, 200);
+  }
+  return event;
+}
+
+// lib/monitoring/reporter.mjs
+function parseDsn(value) {
+  if (typeof value !== "string" || !value) return null;
+  try {
+    const url = new URL(value.trim());
+    const projectId = url.pathname.replace(/^\//, "");
+    if (url.protocol !== "https:" || !/^o\d+\.ingest\.de\.sentry\.io$/.test(url.hostname) || !/^[a-f0-9]{32}$/.test(url.username) || !/^\d+$/.test(projectId)) return null;
+    return { dsn: "https://" + url.username + "@" + url.hostname + "/" + projectId, key: url.username, origin: url.origin, projectId, endpoint: url.origin + "/api/" + projectId + "/envelope/" };
+  } catch {
+    return null;
+  }
+}
+function frames(stack) {
+  if (typeof stack !== "string") return [];
+  const out = [];
+  for (const line of stack.split("\n").slice(1, 40)) {
+    const match = /^\s*at (?:(.+?) \()?(.+?):(\d+):(\d+)\)?$/.exec(line);
+    if (!match) continue;
+    out.push({ function: match[1] || "<anonymous>", filename: match[2], lineno: Number(match[3]), colno: Number(match[4]), in_app: !/node_modules|^node:|^ext:/.test(match[2]) });
+  }
+  return out.reverse();
+}
+function createReporter(options) {
+  const target = parseDsn(options.dsn);
+  async function report(error2, detail = {}) {
+    if (!target) return false;
+    try {
+      const failure = error2 instanceof Error ? error2 : new Error(typeof error2 === "string" ? error2 : "Unknown failure");
+      const id = crypto.randomUUID().replaceAll("-", "");
+      const tags = { surface: options.surface };
+      for (const [key, value] of Object.entries(detail.tags || {})) if (typeof value === "string" && value) tags[key] = value;
+      const event = scrubEvent({
+        event_id: id,
+        timestamp: Date.now() / 1e3,
+        platform: "javascript",
+        level: detail.level || "error",
+        environment: options.environment || "production",
+        release: options.release,
+        tags,
+        ...detail.fingerprint && { fingerprint: detail.fingerprint },
+        exception: { values: [{ type: failure.name || "Error", value: failure.message, stacktrace: { frames: frames(failure.stack) }, mechanism: { type: "generic", handled: true } }] }
+      });
+      const body = JSON.stringify({ event_id: id, sent_at: (/* @__PURE__ */ new Date()).toISOString(), dsn: target.dsn }) + "\n" + JSON.stringify({ type: "event" }) + "\n" + JSON.stringify(event) + "\n";
+      const response = await (options.fetch || fetch)(target.endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-sentry-envelope", "X-Sentry-Auth": "Sentry sentry_version=7, sentry_client=hikmah-reporter/1.0, sentry_key=" + target.key },
+        body,
+        signal: AbortSignal.timeout(3e3)
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+  return { enabled: !!target, report };
+}
+
+// backend/version.ts
+var BACKEND_VERSION = "2026-11-24-monitoring";
+
+// backend/monitoring.ts
+var reporter = createReporter({ dsn: env2.SENTRY_DSN, surface: "edge-function", release: "hikmah-api@" + BACKEND_VERSION, environment: env2.HIKMAH_ENVIRONMENT || "production" });
+function reportBackendFailure(error2, tags = {}) {
+  return reporter.report(error2, { tags: { ...tags, backend_version: BACKEND_VERSION } });
+}
+
+// backend/privacy-jobs.ts
 async function finishErasure(sql, authId) {
   const job = await withDatabase(sql, () => one("SELECT * FROM account_erasure_jobs WHERE auth_user_id=?", authId));
   if (!job || job.status === "completed") return true;
@@ -2092,18 +2271,29 @@ async function finishErasure(sql, authId) {
   try {
     if (job.avatar_path) await bucket().delete(job.avatar_path);
     stage = "auth_cleanup";
-    const base = env2.SUPABASE_URL, key = env2.SUPABASE_SERVICE_ROLE_KEY;
+    const base = env3.SUPABASE_URL, key = env3.SUPABASE_SERVICE_ROLE_KEY;
     if (!base || !key) throw new Error("Auth cleanup unavailable.");
     const response = await fetch(base + "/auth/v1/admin/users/" + encodeURIComponent(authId), { method: "DELETE", headers: { Authorization: "Bearer " + key, apikey: key, "Content-Type": "application/json" }, body: JSON.stringify({ should_soft_delete: false }), signal: AbortSignal.timeout(1e4) });
     if (!response.ok && response.status !== 404) throw new Error("Auth cleanup failed.");
     await withDatabase(sql, () => run("UPDATE account_erasure_jobs SET status='completed',completed_at=?,avatar_path=NULL,last_error_code=NULL,attempts=attempts+1 WHERE auth_user_id=?", Date.now(), authId));
     return true;
-  } catch {
+  } catch (error2) {
+    await reportBackendFailure(error2, { resource: "erasure", stage });
     await withDatabase(sql, () => run("UPDATE account_erasure_jobs SET attempts=attempts+1,last_error_code=? WHERE auth_user_id=?", stage, authId));
     return false;
   }
 }
 async function runPrivacyMaintenance(sql) {
+  try {
+    const result = await maintain(sql);
+    await recordMaintenance(sql, { ...result, ok: result.erasureJobsChecked === result.erasureJobsCompleted && result.storageJobsChecked === result.storageJobsCompleted });
+    return result;
+  } catch (error2) {
+    await recordMaintenance(sql, { ok: false, failed: true });
+    throw error2;
+  }
+}
+async function maintain(sql) {
   const files = await withDatabase(sql, () => many("SELECT path FROM storage_deletion_jobs ORDER BY requested_at LIMIT 20"));
   let filesCompleted = 0;
   for (const file of files) {
@@ -2128,16 +2318,29 @@ async function runPrivacyMaintenance(sql) {
     await run("DELETE FROM rooms WHERE substr(host,1,2)='g_' AND mode='solo' AND updated_at<? AND NOT EXISTS(SELECT 1 FROM rounds r JOIN attempts a ON a.round=r.id WHERE r.room=rooms.id AND a.created_at>=?)", cutoff, cutoff);
     await run("DELETE FROM attempts WHERE substr(user,1,2)='g_' AND created_at<?", cutoff);
     await run("DELETE FROM account_erasure_jobs WHERE status='completed' AND completed_at<?", cutoff);
+    await pruneHealth();
   });
   return { ok: true, erasureJobsChecked: jobs.length, erasureJobsCompleted: completed, storageJobsChecked: files.length, storageJobsCompleted: filesCompleted };
 }
 
 // backend/index.ts
-var BACKEND_VERSION = "2026-11-22-integrity";
 function validActor(value) {
   return value && typeof value.id === "string" && value.id.length > 0 && value.id.length <= 200 && typeof value.name === "string" && value.name.length <= 200 && typeof value.signed === "boolean" && (value.signed ? !value.id.startsWith("g_") : /^g_[a-f0-9-]{36}$/.test(value.id)) && (value.authUserId === void 0 || value.signed && typeof value.authUserId === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value.authUserId) && value.id === "sb_" + value.authUserId);
 }
 async function handleBackend(request) {
+  const meta = { resource: "", action: "" };
+  const response = await route(request, meta);
+  if (meta.sql && response.status >= 400) await recordFailure(meta.sql, meta, response.status);
+  try {
+    response.headers.set("X-Hikmah-Backend-Version", BACKEND_VERSION);
+    return response;
+  } catch {
+    const headers = new Headers(response.headers);
+    headers.set("X-Hikmah-Backend-Version", BACKEND_VERSION);
+    return new Response(response.body, { status: response.status, headers });
+  }
+}
+async function route(request, meta) {
   if (request.method !== "POST") return Response.json({ error: "Method not allowed." }, { status: 405 });
   const token = request.headers.get("x-hikmah-server-token");
   if (!token || !/^[a-f0-9]{64}$/.test(token)) return Response.json({ error: "Unauthorized." }, { status: 401 });
@@ -2149,6 +2352,16 @@ async function handleBackend(request) {
     const url = new URL(request.url);
     const resource = url.searchParams.get("resource");
     const method = url.searchParams.get("method");
+    meta.sql = sql;
+    meta.resource = resource || "";
+    meta.action = url.searchParams.get("action") || "";
+    if (resource === "health-event" && method === "POST") {
+      const { reason } = await request.json().catch(() => ({}));
+      if (!siteAuthReasons.includes(reason)) return Response.json({ error: "Invalid request." }, { status: 400 });
+      await recordFailure(sql, { resource: "site", action: reason, kind: "auth" }, 0);
+      meta.sql = void 0;
+      return Response.json({ ok: true });
+    }
     if (resource === "maintenance" && method === "POST") return Response.json(await runPrivacyMaintenance(sql));
     if (resource === "signup-guard" && method === "POST") {
       const { email } = await request.json();
@@ -2196,6 +2409,8 @@ async function handleBackend(request) {
         return Response.json({ error: "Invalid request." }, { status: 400 });
       }
     }
+    if (resource === "avatar") meta.action = method.toLowerCase();
+    else if (typeof operation === "string" && operation) meta.action = operation;
     if (operation === "create") {
       const blocked = await withDatabase(sql, () => reserveRequest("create", request.headers.get("x-hikmah-client")));
       if (blocked) return blocked;
@@ -2205,9 +2420,13 @@ async function handleBackend(request) {
     try {
       actor = JSON.parse(decodeURIComponent(actorHeader || ""));
     } catch {
+      meta.kind = "auth";
       return Response.json({ error: "Invalid identity." }, { status: 400 });
     }
-    if (!validActor(actor)) return Response.json({ error: "Invalid identity." }, { status: 400 });
+    if (!validActor(actor)) {
+      meta.kind = "auth";
+      return Response.json({ error: "Invalid identity." }, { status: 400 });
+    }
     if (actor.authUserId) {
       const [linked] = await sql`SELECT (SELECT id FROM hikmah.profiles WHERE auth_user_id=${actor.authUserId}) AS profile_id,(SELECT status FROM hikmah.account_erasure_jobs WHERE auth_user_id=${actor.authUserId}) AS erasure_status`;
       if (linked?.erasure_status) {
@@ -2232,16 +2451,16 @@ async function handleBackend(request) {
     }));
     if (operation === "delete" && response.ok && actor.authUserId) {
       const completed = await finishErasure(sql, actor.authUserId);
-      return Response.json({ erasureRequested: true, completed }, { status: completed ? 200 : 202, headers: { "X-Hikmah-Backend-Version": BACKEND_VERSION } });
+      return Response.json({ erasureRequested: true, completed }, { status: completed ? 200 : 202 });
     }
-    response.headers.set("X-Hikmah-Backend-Version", BACKEND_VERSION);
     return response;
   } catch (error2) {
     console.error("Hikmah backend failure", { code: error2?.code || "backend_error", message: error2?.message });
+    await reportBackendFailure(error2, { resource: meta.resource, action: meta.action, code: typeof error2?.code === "string" && /^[A-Za-z0-9_]{1,40}$/.test(error2.code) ? error2.code : void 0 });
     return Response.json({ error: "The game service is unavailable. Your last saved progress is safe. Try again." }, { status: 503 });
   }
 }
-if (typeof Deno !== "undefined" && env3.SUPABASE_URL) Deno.serve(handleBackend);
+if (typeof Deno !== "undefined" && env4.SUPABASE_URL) Deno.serve(handleBackend);
 export {
   BACKEND_VERSION,
   handleBackend
