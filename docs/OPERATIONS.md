@@ -31,7 +31,7 @@ Sentry (Functional Software, Inc.) is a processor for error reports. Use an orga
 
 Do not add `Sentry.setUser`, free-form tags, extra data or new integrations without repeating the browser and server payload checks.
 
-**Retention.** Sentry keeps error events for 30 days on its Developer (free) plan and 90 days on Team and Business plans. Retention is fixed when an event is ingested. The public privacy page states both figures; update it if the plan or Sentry's policy changes.
+**Retention.** Sentry keeps error events for 30 days on its Developer (free) plan and 90 days on Team and Business plans. Retention is fixed when an event is ingested. Hikmah is on the Developer plan, so the public privacy page states 30 days. Update the page before upgrading the plan, and whenever Sentry's policy changes.
 
 **Sentry project settings to apply once.** Security & Privacy: enable *Prevent Storing of IP Addresses* and keep *Data Scrubber* and *Use Default Scrubbers* on. Under Advanced Data Scrubbing add the rule `[Remove] [Anything] from [$user.geo.**]`, which Sentry documents as the way to remove geographic information. Leave Session Replay, tracing and uptime monitoring unused; uptime checks are stored outside the selected region. Record the data processing agreement and transfer basis with the other processor evidence.
 
@@ -128,7 +128,7 @@ Guest play remains available to all ages. Accounts require a person with legal c
 
 ## Provider, email and content evidence
 
-Maintain a processor/transfer assessment covering Supabase (Frankfurt), Netlify (including U.S. infrastructure), Sentry error monitoring (event storage in Frankfurt, Germany; a U.S. company with organisation metadata in the United States; 30 or 90 day error retention by plan), Gmail support and enabled OAuth providers. Record contractual safeguards, applicable transfer mechanism, subprocessors, security measures, retention and the actual necessity of each data flow. Public disclosure alone does not satisfy transfer requirements.
+Maintain a processor/transfer assessment covering Supabase (Frankfurt), Netlify (including U.S. infrastructure), Sentry error monitoring (event storage in Frankfurt, Germany; a U.S. company with organisation metadata in the United States; 30 day error retention on the Developer plan), Gmail support and enabled OAuth providers. Record contractual safeguards, applicable transfer mechanism, subprocessors, security measures, retention and the actual necessity of each data flow. Public disclosure alone does not satisfy transfer requirements.
 
 Verify SMTP delivery, confirmation/reset templates, sender identity, session revocation and configured log/backup retention in the provider dashboards. Current application code sends no marketing campaigns. If marketing is added, obtain the applicable separate consent and implement a free working unsubscribe/suppression process before sending it.
 
