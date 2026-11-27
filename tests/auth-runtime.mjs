@@ -16,7 +16,7 @@ let allowed = true;
 let deletedAccount=false;
 let emailVerifications=0;
 let signups=0;
-const attestations=[];
+const attestations=[],healthEvents=[];
 const automaticHash='c'.repeat(64);
 const mismatchedHash='d'.repeat(64);
 const consumedEmailTokens=new Set();
@@ -53,6 +53,14 @@ const mock = createServer(async (request,response) => {
       assert.match(request.headers['x-hikmah-proof'],/^[0-9a-f]{64}$/);
       assert.match(request.headers['x-hikmah-client'],/^[0-9a-f]{64}$/);
       response.end(JSON.stringify({ticket:uuid}));return;
+    }
+    if(new URL(request.url,'http://localhost').searchParams.get('resource')==='health-event'){
+      // Handled sign-in failures are counted by fixed reason only: no actor, address or account data.
+      assert(!request.headers['x-hikmah-actor']);
+      let body='';for await(const chunk of request)body+=chunk;
+      const event=JSON.parse(body);assert.deepEqual(Object.keys(event),['reason']);
+      assert(['signup_rejected','callback_failed','confirm_failed'].includes(event.reason));
+      healthEvents.push(event.reason);response.end('{"ok":true}');return;
     }
     if(new URL(request.url,'http://localhost').searchParams.get('resource')==='signup-consent'){
       assert(!request.headers['x-hikmah-actor']);
@@ -197,6 +205,7 @@ try {
   deletedAccount=true;
   const erasedLogout=await fetch(origin+'/auth/signout',{method:'POST',headers:{...headers,Origin:origin},redirect:'manual'});
   assert.equal(erasedLogout.status,303);assertSessionCleared(erasedLogout);
+  assert(healthEvents.includes('confirm_failed'),'handled confirmation failures are counted');assert(!healthEvents.includes('callback_failed'),'a callback without a code is not a sign-in failure');
   console.log('Passed: verified account, metadata isolation, revoked session rejection, password reset guard, PKCE callback, verified signup consent, browser-bound confirmation, duplicate signup, redirect isolation, logout and CSRF protection.');
 } finally {
   if(child.exitCode===null){const exited=once(child,'exit');child.kill('SIGTERM');await exited;}

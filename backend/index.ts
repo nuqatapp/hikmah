@@ -10,8 +10,11 @@ import {NextRequest} from './http';
 import * as game from './game-route';
 import * as avatar from './avatar-route';
 import {finishErasure,runPrivacyMaintenance} from './privacy-jobs';
+import {recordFailure,siteAuthReasons,type RequestMeta} from './health';
+import {reportBackendFailure} from './monitoring';
+import {BACKEND_VERSION} from './version';
 
-export const BACKEND_VERSION='2026-11-22-integrity';
+export {BACKEND_VERSION};
 
 function validActor(value: any): value is Actor {
   return value && typeof value.id === 'string' && value.id.length > 0 && value.id.length <= 200 &&
@@ -21,7 +24,18 @@ function validActor(value: any): value is Actor {
       /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value.authUserId) && value.id === 'sb_' + value.authUserId));
 }
 
+// Every response carries the release, including errors, so each caller can
+// tag its own error reports and the Health tab can detect a stale deployment.
 export async function handleBackend(request: Request): Promise<Response> {
+  const meta:RequestMeta={resource:'',action:''};
+  const response=await route(request,meta);
+  // Only requests that passed the server credential check are counted.
+  if(meta.sql&&response.status>=400)await recordFailure(meta.sql,meta,response.status);
+  try{response.headers.set('X-Hikmah-Backend-Version',BACKEND_VERSION);return response}
+  catch{const headers=new Headers(response.headers);headers.set('X-Hikmah-Backend-Version',BACKEND_VERSION);return new Response(response.body,{status:response.status,headers})}
+}
+
+async function route(request: Request, meta: RequestMeta): Promise<Response> {
   if (request.method !== 'POST') return Response.json({error: 'Method not allowed.'}, {status: 405});
   const token = request.headers.get('x-hikmah-server-token');
   if (!token || !/^[a-f0-9]{64}$/.test(token)) return Response.json({error: 'Unauthorized.'}, {status: 401});
@@ -34,6 +48,15 @@ export async function handleBackend(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const resource = url.searchParams.get('resource');
     const method = url.searchParams.get('method');
+    meta.sql=sql;meta.resource=resource||'';meta.action=url.searchParams.get('action')||'';
+    // Trusted site routes report sign-in failures they handle themselves, by fixed reason only.
+    if(resource==='health-event'&&method==='POST'){
+      const {reason}=await request.json().catch(()=>({}));
+      if(!siteAuthReasons.includes(reason))return Response.json({error:'Invalid request.'},{status:400});
+      await recordFailure(sql,{resource:'site',action:reason,kind:'auth'},0);
+      meta.sql=undefined;
+      return Response.json({ok:true});
+    }
     if(resource==='maintenance'&&method==='POST')return Response.json(await runPrivacyMaintenance(sql));
     if(resource==='signup-guard'&&method==='POST'){
       const {email}=await request.json();
@@ -65,6 +88,8 @@ export async function handleBackend(request: Request): Promise<Response> {
     if ((body?.byteLength || 0) > limit) return Response.json({error: 'Request is too large.'}, {status: 413});
     let operation='';let confirmation:unknown;
     if(resource==='game'&&body){try{const payload=JSON.parse(new TextDecoder().decode(body));operation=payload.action;confirmation=payload.confirm}catch{return Response.json({error:'Invalid request.'},{status:400})}}
+    if(resource==='avatar')meta.action=method!.toLowerCase();
+    else if(typeof operation==='string'&&operation)meta.action=operation;
     if(operation==='create'){
       const blocked=await withDatabase(sql,()=>reserveRequest('create',request.headers.get('x-hikmah-client')));
       if(blocked)return blocked;
@@ -72,8 +97,8 @@ export async function handleBackend(request: Request): Promise<Response> {
     const actorHeader = request.headers.get('x-hikmah-actor');
     let actor: Actor;
     try { actor = JSON.parse(decodeURIComponent(actorHeader || '')); }
-    catch { return Response.json({error: 'Invalid identity.'}, {status: 400}); }
-    if (!validActor(actor)) return Response.json({error: 'Invalid identity.'}, {status: 400});
+    catch { meta.kind='auth'; return Response.json({error: 'Invalid identity.'}, {status: 400}); }
+    if (!validActor(actor)) { meta.kind='auth'; return Response.json({error: 'Invalid identity.'}, {status: 400}); }
     if (actor.authUserId) {
       // Explicit links preserve legacy wallets. Never link by display name.
       const [linked] = await sql`SELECT (SELECT id FROM hikmah.profiles WHERE auth_user_id=${actor.authUserId}) AS profile_id,(SELECT status FROM hikmah.account_erasure_jobs WHERE auth_user_id=${actor.authUserId}) AS erasure_status`;
@@ -98,13 +123,14 @@ export async function handleBackend(request: Request): Promise<Response> {
     }));
     if(operation==='delete'&&response.ok&&actor.authUserId){
       const completed=await finishErasure(sql,actor.authUserId);
-      return Response.json({erasureRequested:true,completed},{status:completed?200:202,headers:{'X-Hikmah-Backend-Version':BACKEND_VERSION}});
+      return Response.json({erasureRequested:true,completed},{status:completed?200:202});
     }
-    response.headers.set('X-Hikmah-Backend-Version',BACKEND_VERSION);
     return response;
   } catch (error: any) {
     // Do not log parameter values, tokens, or player answers.
     console.error('Hikmah backend failure', {code: error?.code || 'backend_error', message: error?.message});
+    // The report is scrubbed and tagged with fixed vocabulary only.
+    await reportBackendFailure(error,{resource:meta.resource,action:meta.action,code:typeof error?.code==='string'&&/^[A-Za-z0-9_]{1,40}$/.test(error.code)?error.code:undefined});
     return Response.json({error: 'The game service is unavailable. Your last saved progress is safe. Try again.'}, {status: 503});
   }
 }

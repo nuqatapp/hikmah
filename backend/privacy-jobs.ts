@@ -1,6 +1,8 @@
 import {env} from 'node:process';
 import {bucket,withDatabase,type createConnection} from '../db/raw';
 import {one,many,run} from '../lib/game/service';
+import {pruneHealth,recordMaintenance} from './health';
+import {reportBackendFailure} from './monitoring';
 
 type Connection=ReturnType<typeof createConnection>;
 export async function hasErasureJob(sql:Connection,authId:string) {
@@ -20,12 +22,24 @@ export async function finishErasure(sql:Connection,authId:string) {
     if(!response.ok&&response.status!==404)throw new Error('Auth cleanup failed.');
     await withDatabase(sql,()=>run("UPDATE account_erasure_jobs SET status='completed',completed_at=?,avatar_path=NULL,last_error_code=NULL,attempts=attempts+1 WHERE auth_user_id=?",Date.now(),authId));
     return true;
-  }catch{
+  }catch(error){
+    // Stage only: the account identifier never leaves the database.
+    await reportBackendFailure(error,{resource:'erasure',stage});
     await withDatabase(sql,()=>run('UPDATE account_erasure_jobs SET attempts=attempts+1,last_error_code=? WHERE auth_user_id=?',stage,authId));
     return false;
   }
 }
 export async function runPrivacyMaintenance(sql:Connection) {
+  try{
+    const result=await maintain(sql);
+    await recordMaintenance(sql,{...result,ok:result.erasureJobsChecked===result.erasureJobsCompleted&&result.storageJobsChecked===result.storageJobsCompleted});
+    return result;
+  }catch(error){
+    await recordMaintenance(sql,{ok:false,failed:true});
+    throw error;
+  }
+}
+async function maintain(sql:Connection) {
   const files=await withDatabase(sql,()=>many('SELECT path FROM storage_deletion_jobs ORDER BY requested_at LIMIT 20'));
   let filesCompleted=0;
   for(const file of files){
@@ -45,6 +59,7 @@ export async function runPrivacyMaintenance(sql:Connection) {
     await run("DELETE FROM rooms WHERE substr(host,1,2)='g_' AND mode='solo' AND updated_at<? AND NOT EXISTS(SELECT 1 FROM rounds r JOIN attempts a ON a.round=r.id WHERE r.room=rooms.id AND a.created_at>=?)",cutoff,cutoff);
     await run("DELETE FROM attempts WHERE substr(user,1,2)='g_' AND created_at<?",cutoff);
     await run("DELETE FROM account_erasure_jobs WHERE status='completed' AND completed_at<?",cutoff);
+    await pruneHealth();
   });
   return {ok:true,erasureJobsChecked:jobs.length,erasureJobsCompleted:completed,storageJobsChecked:files.length,storageJobsCompleted:filesCompleted};
 }

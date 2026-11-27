@@ -1,12 +1,15 @@
 # Hikmah deployment
 
-Production pointers verified on 2026-11-22. The verification and credential history below dates to September 2026.
+Production pointers verified on 2026-11-27 against the Netlify and Supabase project APIs. The verification and credential history below dates to September 2026.
 
 - Live site: https://hikmahgame.com
 - Netlify project: hikmah-wisdom-games, bfba38b2-602d-4890-8048-d6c6a0e4f7ea.
-- Production deploy: 6afebc95a1b7bd7f3439f923, ready.
+- Production deploy: the Netlify production deploy of `main`. Before the monitoring release it was 6b034465e9967ce655e960a2 (22 November, f067045); the merge of pull request 15 replaces it. Read the current id in Netlify.
 - Public source: https://github.com/nuqatapp/hikmah, main. Publication was explicitly approved by the owner.
-- Supabase: vilgghdzyqdsvbaazphh, private hikmah schema, hikmah-api Edge Function version 6. The deployed game API reports `2026-11-19-signup` until the integrity release is deployed.
+- Supabase: vilgghdzyqdsvbaazphh, private hikmah schema. The production game API is the `hikmah-api-integrity` Edge Function. It has been the production endpoint since 22 November 2026 and runs version 3, deployed 27 November 2026, which reports `2026-11-24-monitoring`. The production `HIKMAH_BACKEND_URL` points to it.
+- `hikmah-api-candidate` (version 7, preview validation) runs the same bundle. On 27 November a Deploy Preview request against it returned 200 with `2026-11-24-monitoring`, a guest game was created, and the failure counter recorded a rejected duplicate.
+- Both functions are a five-line entry file that imports `supabase/functions/hikmah-api/index.js` from this public repository at commit 14df003, plus `deno.json`. The file is fetched once at deploy time. The build directory name is the output path, not the name of the production function. See [Releasing the backend](docs/OPERATIONS.md#releasing-the-backend).
+- The earlier `hikmah-api` (version 6, last updated 19 November) remains deployed and is not the production endpoint. Retire it only after the owner confirms no deployment still references it. Deploy Previews fall back to it only if `HIKMAH_PREVIEW_BACKEND_URL` is removed.
 
 ## Working and verified
 
@@ -29,6 +32,18 @@ Netlify Free includes Secrets Controller. Restricting scopes to Functions only i
 The Netlify connector may report "upserted" even when an underlying create request fails. Use a new deployment and live runtime checks to verify changes. Earlier attempts using all scopes included prohibited Post processing; granular Functions-only or Builds/Functions attempts did not establish a working connection. The approved three-scope masked configuration resolved the live connection.
 
 References: https://docs.netlify.com/build/environment-variables/overview/ and https://docs.netlify.com/build/environment-variables/secrets-controller/
+
+## Error monitoring
+
+Sentry error monitoring is wired into the browser, the Next.js server, the `privacy-maintenance` scheduled function and the game Edge Function. It stays off until a DSN is configured, and only an EU (Germany) DSN is accepted. The backend release `2026-11-24-monitoring` is live in production since 27 November 2026; a frontend release never deploys the backend. Configuration, what is sent and the release steps are in [docs/OPERATIONS.md](docs/OPERATIONS.md#error-monitoring-sentry). The admin Health tab shows a red warning while the live backend release differs from `backend/version.ts`.
+
+| Variable | Where | Scope and secrecy |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SENTRY_DSN` | Netlify | Builds, Functions, Runtime. Not a secret. |
+| `SENTRY_ORG` | Netlify | Builds, Functions, Runtime. Not a secret. |
+| `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` | Netlify | Builds only. The token is a secret. Optional: readable stack traces. |
+| `SENTRY_ISSUES_TOKEN` | Netlify | Functions, Runtime. Secret, read-only `event:read`. Never `NEXT_PUBLIC_`. |
+| `SENTRY_DSN` | Supabase function secrets | Same DSN, for the Edge Function. Set on 27 November 2026. |
 
 ## Remaining setup
 

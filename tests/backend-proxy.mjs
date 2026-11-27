@@ -10,11 +10,11 @@ const originalFetch=globalThis.fetch;
 const keys=['HIKMAH_BACKEND_URL','HIKMAH_BACKEND_TOKEN','HIKMAH_PREVIEW_BACKEND_URL','HIKMAH_PREVIEW_BACKEND_TOKEN'];
 const original=Object.fromEntries(keys.map(key=>[key,process.env[key]]));
 const productionToken='a'.repeat(64),previewToken='b'.repeat(64);
-let calls=[];
+let calls=[];globalThis.__reported=[];
 try{
  await build({entryPoints:['lib/backend-proxy.ts'],outfile:join(dir,'proxy.mjs'),bundle:true,platform:'node',format:'esm',plugins:[{name:'identity-fixture',setup(b){
-  b.onResolve({filter:/^(server-only|\.\/site-identity)$/},args=>({path:args.path,namespace:'fixture'}));
-  b.onLoad({filter:/.*/,namespace:'fixture'},({path})=>({contents:path==='server-only'?'export {}':'export const siteIdentity=async()=>({id:"g_00000000-0000-0000-0000-000000000001",name:"Guest",signed:false})'}));
+  b.onResolve({filter:/^(server-only|\.\/site-identity|\.\/monitoring\/server)$/},args=>({path:args.path,namespace:'fixture'}));
+  b.onLoad({filter:/.*/,namespace:'fixture'},({path})=>({contents:path==='server-only'?'export {}':path==='./monitoring/server'?'export const reportServerFailure=async(error,detail)=>{globalThis.__reported.push(detail)}':'export const siteIdentity=async()=>({id:"g_00000000-0000-0000-0000-000000000001",name:"Guest",signed:false})'}));
  }}]});
  const {proxyBackend}=await import(pathToFileURL(join(dir,'proxy.mjs')).href);
  globalThis.fetch=async(url,options)=>{calls.push({url:String(url),token:options.headers['x-hikmah-server-token']});return Response.json({ok:true},{headers:{'X-Hikmah-Backend-Version':'fixture'}})};
@@ -36,6 +36,15 @@ try{
  response=await proxyBackend(request(),'game');assert.equal(response.status,503);assert.equal(response.headers.get('X-Hikmah-Error-Type'),'CredentialFormatError');assert.equal(calls.length,before,'invalid preview credentials never fall back silently');
  response=await proxyBackend(new Request('https://game.example/api/game',{method:'POST',headers:{host:'game.example',origin:'https://other.example'},body:'{}'}),'game');
  assert.equal(response.status,403);assert.equal(calls.length,before);
+ // Failures are reported with fixed tags only; a backend 5xx is reported by the proxy because a crashed function cannot report itself.
+ assert.deepEqual(globalThis.__reported.at(-1).tags,{stage:'configuration',resource:'game'});
+ assert(!JSON.stringify(globalThis.__reported).includes(productionToken)&&!JSON.stringify(globalThis.__reported).includes(previewToken));
+ process.env.HIKMAH_PREVIEW_BACKEND_TOKEN=previewToken;const reported=globalThis.__reported.length;
+ globalThis.fetch=async()=>new Response('worker crashed',{status:546,headers:{'X-Hikmah-Backend-Version':'fixture'}});
+ response=await proxyBackend(request(),'game');assert.equal(response.status,546);
+ assert.equal(globalThis.__reported.length,reported+1);assert.deepEqual(globalThis.__reported.at(-1).tags,{stage:'backend',resource:'game',upstream_status:'546'});
+ globalThis.fetch=async()=>Response.json({error:'Sign in.'},{status:401});
+ response=await proxyBackend(request(),'game');assert.equal(response.status,401);assert.equal(globalThis.__reported.length,reported+1,'player-level rejections are not reported');
  console.log('Passed: production/preview credential isolation, compatibility fallback, invalid-secret rejection, safe responses and cross-origin protection.');
 }finally{
  globalThis.fetch=originalFetch;for(const key of keys){if(original[key]===undefined)delete process.env[key];else process.env[key]=original[key]}
