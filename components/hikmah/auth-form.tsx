@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useRef,useState, type FormEvent} from 'react';
+import {BrandLogo} from './brand-logo';
 import {SignupCaptcha} from './signup-captcha';
 import Link from 'next/link';
 import {browserAuth} from '@/lib/supabase/client';
@@ -111,7 +112,7 @@ export function AuthForm({configured, google, next, reset = false, callbackError
   }
   const titles = {signin: t('Welcome back.', 'مرحبًا بعودتك.'), signup: t('Join Hikmah.', 'انضم إلى حكمة.'), forgot: t('Reset your password.', 'أعد تعيين كلمة المرور.'), reset: t('Choose a new password.', 'اختر كلمة مرور جديدة.')};
   return <main className="shell main" lang={locale} dir={arabic ? 'rtl' : 'ltr'}><section className="panel stack" style={{maxWidth:480, margin:'0 auto'}}>
-    <div className="flex-row spread"><Link href="/" className="brand"><span className="brand-mark" aria-hidden="true">ح</span><span className="brand-name">{t('Hikmah','حكمة')}</span></Link><button type="button" className="btn outline" onClick={() => setLocale(arabic?'en':'ar')}>{arabic ? 'English' : 'العربية'}</button></div>
+    <div className="flex-row spread"><Link href="/" className="brand"><BrandLogo arabic={arabic}/></Link><button type="button" className="btn outline" onClick={() => setLocale(arabic?'en':'ar')}>{arabic ? 'English' : 'العربية'}</button></div>
     {signupEmail ? <>
       <h1 ref={heading} tabIndex={-1} style={{fontSize:'2.3rem'}}>{t('Check your email','تحقق من بريدك الإلكتروني')}</h1>
       <p>{t('Registration submitted. Confirm your email to activate your account.','تم إرسال طلب التسجيل. أكّد بريدك الإلكتروني لتفعيل حسابك.')}</p>

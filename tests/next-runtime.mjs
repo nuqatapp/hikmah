@@ -43,7 +43,7 @@ try {
     assert.equal(response.status, 200, path);
     assert((await response.text()).includes('Hikmah'), path);
   }
-  for (const path of ['/robots.txt','/sitemap.xml','/manifest.webmanifest','/favicon.ico','/share.png']){
+  for (const path of ['/robots.txt','/sitemap.xml','/manifest.webmanifest','/favicon.ico','/favicon.svg','/favicon.png','/icon-512.png','/apple-touch-icon.png','/brand/hikmah_lockup-mark-right_color.svg','/brand/hikmah_lockup-mark-left_white.svg','/share.png']){
     assert.equal((await fetch(origin+path)).status,200,path);
   }
   const home=await fetch(origin);

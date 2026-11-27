@@ -23,7 +23,7 @@ A complete bilingual wisdom-game platform with a fresh database. The source is i
 - `db/raw.ts`: Postgres transaction adapter and Supabase Storage access.
 - `supabase/migrations/`: applied Postgres schema migrations.
 - `drizzle/`: immutable historical D1 migrations, retained for source history and regression tests.
-- `public/`: original logo and favicon.
+- `public/`: brand kit 1.0 logo files (`brand/`), icons and the link preview image. See `docs/BRAND.md`.
 - `tests/game-service.mjs`: real service tests against SQLite through a D1-compatible adapter.
 
 ## Standard Next.js runtime and Netlify

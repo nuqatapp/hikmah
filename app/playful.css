@@ -38,3 +38,10 @@ label.btn:focus-within{outline:3px solid var(--ring);outline-offset:4px}
 @media(hover:none){.game-card:hover,.btn:hover{transform:none}.sample-stage:hover .sample-card{transform:rotate(1.5deg)}[dir=rtl] .sample-stage:hover .sample-card{transform:rotate(-1.5deg)}}
 
 .home-notes{grid-template-columns:minmax(0,680px);padding-block:0 40px}
+
+/* Brand kit 1.0 logo. Used as supplied: no rotation, shadow or recolouring. */
+.brand img.brand-logo{display:block;width:auto;height:54px;border-radius:0}
+.brand img.brand-logo.on-dark,.dark .brand img.brand-logo.on-light{display:none}
+.dark .brand img.brand-logo.on-dark{display:block}
+.brand-symbol{display:block;width:auto;height:64px}
+@media(max-width:650px){.brand img.brand-logo{height:44px}}
