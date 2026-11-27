@@ -53,14 +53,20 @@ The counters are hourly rows in the private `hikmah.site_settings` table under `
 
 A frontend release ahead of the backend is safe: the tab shows the version warning and a notice that health data needs the matching Edge Function.
 
-### Releasing the monitoring backend
+### Releasing the backend
 
-1. Run `pnpm run build:backend` and commit the result with the source change.
-2. Optionally deploy to `hikmah-api-candidate` first and validate on a Deploy Preview.
-3. Set the `SENTRY_DSN` function secret in Supabase (Edge Functions → Secrets).
-4. Deploy `supabase/functions/hikmah-api/index.js` and `deno.json` to `hikmah-api-integrity` with gateway JWT verification disabled, as it is today. With the CLI, from a copy of that directory named `hikmah-api-integrity`: `supabase functions deploy hikmah-api-integrity --project-ref vilgghdzyqdsvbaazphh --no-verify-jwt`.
-5. Open `/admin` → Health and confirm the live release reads `2026-11-24-monitoring` with no red warning, then complete the checks in step 6 of the coordinated release.
-6. Rollback: redeploy the previous function version from the Supabase dashboard. The site keeps working against `2026-11-22-integrity`; only the Health data is unavailable.
+The built bundle is about 117 KB. Deploy it by reference so that no tool has to retype it:
+
+1. Run `pnpm run build:backend`, commit the result with the source change and push. Note the commit hash. CI must pass.
+2. Deploy an entry file to `hikmah-api-candidate` that contains one line, `import "https://raw.githubusercontent.com/nuqatapp/hikmah/<commit>/supabase/functions/hikmah-api/index.js";`, together with the generated `deno.json`, with gateway JWT verification disabled. Supabase fetches the bundle once while deploying. Use the full commit hash, never a branch name, and only this repository.
+3. Open the Deploy Preview and confirm a game API response is 200 with the expected `X-Hikmah-Backend-Version`.
+4. Deploy the same two files to `hikmah-api-integrity`. The two functions should report the same bundle hash.
+5. Publish the matching frontend, then open `/admin` → Health and confirm there is no red version warning. Complete the checks in step 6 of the coordinated release.
+6. Rollback: deploy the entry file again with the previous release's commit hash (f067045 for `2026-11-22-integrity`). The site keeps working against the older backend; only the Health data is unavailable.
+
+Function secrets such as `SENTRY_DSN` are set in the Supabase dashboard under Edge Functions → Secrets and apply to every function in the project. Uploading the bundle directly with the Supabase CLI (`supabase functions deploy <name> --project-ref vilgghdzyqdsvbaazphh --no-verify-jwt`) remains valid when a logged-in CLI is available.
+
+The 27 November 2026 release followed these steps: candidate version 7 and production version 3 from commit 14df003.
 
 ## Signup protection rollout
 

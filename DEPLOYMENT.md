@@ -1,14 +1,15 @@
 # Hikmah deployment
 
-Production pointers verified on 2026-11-24 against the Netlify and Supabase project APIs. The verification and credential history below dates to September 2026.
+Production pointers verified on 2026-11-27 against the Netlify and Supabase project APIs. The verification and credential history below dates to September 2026.
 
 - Live site: https://hikmahgame.com
 - Netlify project: hikmah-wisdom-games, bfba38b2-602d-4890-8048-d6c6a0e4f7ea.
-- Production deploy: 6b034465e9967ce655e960a2, ready, published 2026-11-22 19:37 UTC from `main` at f067045.
+- Production deploy: the Netlify production deploy of `main`. Before the monitoring release it was 6b034465e9967ce655e960a2 (22 November, f067045); the merge of pull request 15 replaces it. Read the current id in Netlify.
 - Public source: https://github.com/nuqatapp/hikmah, main. Publication was explicitly approved by the owner.
-- Supabase: vilgghdzyqdsvbaazphh, private hikmah schema. The production game API is the `hikmah-api-integrity` Edge Function, version 1, live since 22 November 2026 (created 19:13 UTC). Its deployed source reports `2026-11-22-integrity`. The production privacy-maintenance run of 24 November 03:01 UTC reached this function and returned 200, which confirms that the production `HIKMAH_BACKEND_URL` points to it.
-- The earlier `hikmah-api` (version 6, last updated 19 November) and `hikmah-api-candidate` (version 6, preview validation) remain deployed. Neither is the production endpoint. Retire `hikmah-api` only after the owner confirms no deployment still references it.
-- The repository builds the backend into `supabase/functions/hikmah-api/`. That directory name is the build output path, not the name of the production function: deploy its `index.js` and `deno.json` to `hikmah-api-integrity`, or to a new function followed by a coordinated backend URL switch. See the [coordinated release procedure](docs/OPERATIONS.md#coordinated-release).
+- Supabase: vilgghdzyqdsvbaazphh, private hikmah schema. The production game API is the `hikmah-api-integrity` Edge Function. It has been the production endpoint since 22 November 2026 and runs version 3, deployed 27 November 2026, which reports `2026-11-24-monitoring`. The production `HIKMAH_BACKEND_URL` points to it.
+- `hikmah-api-candidate` (version 7, preview validation) runs the same bundle. On 27 November a Deploy Preview request against it returned 200 with `2026-11-24-monitoring`, a guest game was created, and the failure counter recorded a rejected duplicate.
+- Both functions are a five-line entry file that imports `supabase/functions/hikmah-api/index.js` from this public repository at commit 14df003, plus `deno.json`. The file is fetched once at deploy time. The build directory name is the output path, not the name of the production function. See [Releasing the backend](docs/OPERATIONS.md#releasing-the-backend).
+- The earlier `hikmah-api` (version 6, last updated 19 November) remains deployed and is not the production endpoint. Retire it only after the owner confirms no deployment still references it. Deploy Previews fall back to it only if `HIKMAH_PREVIEW_BACKEND_URL` is removed.
 
 ## Working and verified
 
@@ -34,7 +35,7 @@ References: https://docs.netlify.com/build/environment-variables/overview/ and h
 
 ## Error monitoring
 
-Sentry error monitoring is wired into the browser, the Next.js server, the `privacy-maintenance` scheduled function and the game Edge Function. It stays off until a DSN is configured, and only an EU (Germany) DSN is accepted. The backend release in this repository is `2026-11-24-monitoring`; it is not deployed by a frontend release. Configuration, what is sent and the release steps are in [docs/OPERATIONS.md](docs/OPERATIONS.md#error-monitoring-sentry). The admin Health tab shows a red warning while the live backend release differs from `backend/version.ts`.
+Sentry error monitoring is wired into the browser, the Next.js server, the `privacy-maintenance` scheduled function and the game Edge Function. It stays off until a DSN is configured, and only an EU (Germany) DSN is accepted. The backend release `2026-11-24-monitoring` is live in production since 27 November 2026; a frontend release never deploys the backend. Configuration, what is sent and the release steps are in [docs/OPERATIONS.md](docs/OPERATIONS.md#error-monitoring-sentry). The admin Health tab shows a red warning while the live backend release differs from `backend/version.ts`.
 
 | Variable | Where | Scope and secrecy |
 | --- | --- | --- |
@@ -42,7 +43,7 @@ Sentry error monitoring is wired into the browser, the Next.js server, the `priv
 | `SENTRY_ORG` | Netlify | Builds, Functions, Runtime. Not a secret. |
 | `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` | Netlify | Builds only. The token is a secret. Optional: readable stack traces. |
 | `SENTRY_ISSUES_TOKEN` | Netlify | Functions, Runtime. Secret, read-only `event:read`. Never `NEXT_PUBLIC_`. |
-| `SENTRY_DSN` | Supabase function secrets | Same DSN, for the Edge Function. |
+| `SENTRY_DSN` | Supabase function secrets | Same DSN, for the Edge Function. Set on 27 November 2026. |
 
 ## Remaining setup
 
